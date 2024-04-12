@@ -1,0 +1,16 @@
+# Use the specific base image
+FROM quay.io/projectquay/golang:1.20 as builder
+
+WORKDIR /app
+COPY . .
+
+# Build the application
+RUN make build-linux-amd64
+
+# Use scratch for a minimal production image
+FROM scratch
+COPY --from=builder /app/app-linux-amd64 /app
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+
+# Set the entry point
+ENTRYPOINT ["/app"]
