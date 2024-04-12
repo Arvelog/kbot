@@ -23,7 +23,9 @@ push:
 	docker push ${REGISTRY}/${APP}:${VERSION}-${TARGETARCH}
 
 clean:
-	docker rmi ${REGISTRY}/${APP}:${VERSION}-${TARGETARCH} || true
+	@echo "Cleaning up Docker images..."
+	docker rmi quay.io/projectquay/kbot:$(VERSION)-$(TARGETARCH) || true
+
 
 dependencies:
 	go get ./...
