@@ -1,1 +1,17 @@
-README
+# CI/CD Pipeline
+
+![Workflow Diagram](path/to/workflow-diagram.png)
+
+## Overview
+
+This project uses GitHub Actions to automate the CI/CD pipeline. The workflow includes the following steps:
+1. Checkout the code from the repository.
+2. Build the project.
+3. Build and push the Docker image to GitHub Container Registry (ghcr.io).
+4. Deploy the application to Kubernetes using Helm and ArgoCD.
+
+### Workflow Diagram
+The diagram below shows the interaction of each step in the automated CI/CD process with the infrastructure elements to ensure the automated deployment and testing of your Telegram bot.
+
+![Workflow Diagram](path/to/workflow-diagram.png)
+
