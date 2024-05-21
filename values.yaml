@@ -1,0 +1,12 @@
+image:
+  registry: ghcr.io
+  repository: arvelog/kbot
+  tag: "latest"
+  os: linux
+  arch: amd64
+
+# Інші параметри Helm Chart
+replicaCount: 1
+service:
+  type: ClusterIP
+  port: 80
