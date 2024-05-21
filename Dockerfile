@@ -1,15 +1,9 @@
-# Use the specific base image
-FROM quay.io/projectquay/golang:1.20 as builder
-
-WORKDIR /go/src/app
+FROM golang:1.18 AS builder
+WORKDIR /app
 COPY . .
+RUN go build -o kbot cmd/kbot/main.go
 
-# Install dependencies and build the application
-RUN make build
-
-# Use scratch for a minimal production image
-FROM scratch
-WORKDIR /
-COPY --from=builder /go/src/app/kbot /kbot
-COPY --from=alpine:latest /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
-ENTRYPOINT ["/kbot"]
+FROM alpine:latest
+WORKDIR /root/
+COPY --from=builder /app/kbot .
+CMD ["./kbot"]
