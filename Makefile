@@ -1,5 +1,8 @@
 .PHONY: all build docker-build docker-push helm-deploy
 
+REGISTRY := ghcr.io/arvelog
+IMAGE := $(REGISTRY)/kbot
+
 all: build docker-build docker-push helm-deploy
 
 build:
@@ -9,12 +12,12 @@ build:
 
 docker-build:
     @echo "Building Docker image..."
-    docker build -t ghcr.io/arvelog/kbot:latest .
+    docker build . -t $(IMAGE):latest --build-arg TARGETARCH=amd64
 
 docker-push:
     @echo "Pushing Docker image..."
-    docker push ghcr.io/arvelog/kbot:latest
+    docker push $(IMAGE):latest
 
 helm-deploy:
     @echo "Deploying to Kubernetes with Helm..."
-    helm upgrade --install my-bot ./helm-chart --namespace my-namespace -f values.yaml
+    helm upgrade --install kbot ./helm-chart --namespace my-namespace -f values.yaml
