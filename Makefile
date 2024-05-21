@@ -11,7 +11,7 @@ test:
     # Додайте ваші тести тут
 
 build:
-    docker build . -t $(REGISTRY)/$(APP_NAME):$(TAG) --build-arg TARGETARCH=amd64
+    docker build . -t $(REGISTRY)/$(APP_NAME):$(TAG) --build-arg TARGETARCH=arm64
 
 push:
     docker push $(REGISTRY)/$(APP_NAME):$(TAG)
