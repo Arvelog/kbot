@@ -1,5 +1,5 @@
 APP := $(shell basename $$(git remote get-url origin 2>/dev/null) || echo "default_app_name")
-REGISTRY := ghcr.io/vit-um
+REGISTRY := ghcr.io/arvelog
 VERSION := $(shell git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")-$(shell git rev-parse --short HEAD)
 TARGETARCH ?= arm64
 TARGETOS ?= linux
