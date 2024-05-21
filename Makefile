@@ -1,17 +1,20 @@
-APP_NAME := kbot
-REGISTRY := ghcr.io/vit-um
-TAG := $(shell git describe --tags --abbrev=0 --always)-$(shell git rev-parse --short HEAD)
+.PHONY: all build docker-build docker-push helm-deploy
 
-.PHONY: all test build push
-
-all: test build push
-
-test:
-    echo "Running tests..."
-    # Додайте ваші тести тут
+all: build docker-build docker-push helm-deploy
 
 build:
-    docker build . -t $(REGISTRY)/$(APP_NAME):$(TAG) --build-arg TARGETARCH=arm64
+    @echo "Building the project..."
+    # Команди для збірки проекту, наприклад:
+    # go build -o bin/my-bot cmd/my-bot/main.go
 
-push:
-    docker push $(REGISTRY)/$(APP_NAME):$(TAG)
+docker-build:
+    @echo "Building Docker image..."
+    docker build -t ghcr.io/arvelog/kbot:latest .
+
+docker-push:
+    @echo "Pushing Docker image..."
+    docker push ghcr.io/arvelog/kbot:latest
+
+helm-deploy:
+    @echo "Deploying to Kubernetes with Helm..."
+    helm upgrade --install my-bot ./helm-chart --namespace my-namespace -f values.yaml
