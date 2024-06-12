@@ -3,7 +3,7 @@ name: KBOT-CICD
 on:
   push:
     branches:
-      - develop
+      - main
 
 jobs:
   ci:
@@ -48,7 +48,7 @@ jobs:
 
       - uses: mikefarah/yq@master
         with:
-          cmd: yq -i '.image.tag=strenv(VERSION) | .image.os=strenv(TARGETOS) | .image.arch=strenv(TARGETARCH)' helm/values.yaml
+          cmd: yq -i '.image.tag=strenv(VERSION) | .image.os=strenv(TARGETOS) | .image.arch=strenv(TARGETARCH)' helm-chart/values.yaml
 
       - run: |
           git config user.name github-actions
