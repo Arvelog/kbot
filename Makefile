@@ -8,7 +8,7 @@ all: build docker-build docker-push helm-deploy
 
 build:
 	@echo "Building the project..."
-	go build -o bin/my-bot cmd/my-bot/main.go
+	go build -o bin/my-bot ./main.go
 
 docker-build:
 	@echo "Building Docker image..."
@@ -21,4 +21,3 @@ docker-push:
 helm-deploy:
 	@echo "Deploying to Kubernetes with Helm..."
 	helm upgrade --install kbot ./helm-chart --namespace my-namespace -f values.yaml --set image.repository=$(IMAGE) --set image.tag=$(TAG)
-
