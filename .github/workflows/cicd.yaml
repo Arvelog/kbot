@@ -59,4 +59,4 @@ jobs:
       - name: Deploy to Kubernetes
         env:
           KUBECONFIG: ${{ secrets.KUBECONFIG }}
-        run: make helm-deploy
+        run: helm upgrade --install kbot helm-chart --namespace my-namespace -f helm-chart/values.yaml --set image.repository=ghcr.io/arvelog/kbot --set image.tag=$(VERSION)
