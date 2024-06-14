@@ -20,4 +20,4 @@ docker-push:
 
 helm-deploy:
 	@echo "Deploying to Kubernetes with Helm..."
-	helm upgrade --install kbot ./helm-chart --namespace my-namespace -f values.yaml --set image.repository=$(IMAGE) --set image.tag=$(TAG)
+	helm upgrade --install kbot helm --namespace my-namespace -f helm/values.yaml --set image.repository=$(IMAGE) --set image.tag=$(TAG)

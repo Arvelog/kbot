@@ -46,9 +46,9 @@ jobs:
 
       - run: echo "VERSION=$(git describe --tags --abbrev=0 --always)-$(git rev-parse --short HEAD)" >> $GITHUB_ENV
 
-      - uses: mikefarah/yq@v4
-        with:
-          cmd: yq -i '.image.tag=strenv(VERSION) | .image.os=strenv(TARGETOS) | .image.arch=strenv(TARGETARCH)' helm-chart/values.yaml
+      - name: Update Helm chart values
+        run: |
+          yq -i '.image.tag = strenv(VERSION) | .image.os = "linux" | .image.arch = "amd64"' helm/values.yaml
 
       - run: |
           git config user.name github-actions
@@ -59,4 +59,4 @@ jobs:
       - name: Deploy to Kubernetes
         env:
           KUBECONFIG: ${{ secrets.KUBECONFIG }}
-        run: helm upgrade --install kbot helm-chart --namespace my-namespace -f helm-chart/values.yaml --set image.repository=ghcr.io/arvelog/kbot --set image.tag=$(VERSION)
+        run: helm upgrade --install kbot helm --namespace my-namespace -f helm/values.yaml --set image.repository=ghcr.io/arvelog/kbot --set image.tag=$(VERSION)
