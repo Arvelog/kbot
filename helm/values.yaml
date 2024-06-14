@@ -13,6 +13,6 @@ secret:
   name: "kbot"
   env: "TELE_TOKEN"
   key: "token" 
-  value: "NjU1MjQ2NzQ0OTpBQUZHR3k3WnREdjlpRExmdEx5OV85cDF5U0tNSTNkeU00aw=="
+  value: "7090648610:AAEKZl6thxmngf5pzGDWSZek1GHFhN9TiLE"
 securityContext:
   privileged: true
