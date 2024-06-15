@@ -52,9 +52,6 @@ jobs:
         with:
           cmd: yq -i '.image.tag=strenv(VERSION)' helm/values.yaml
 
-      - name: Print updated Helm chart values
-        run: cat helm/values.yaml
-
       - name: Commit updated values.yaml
         env:
           GH_PAT: ${{ secrets.GH_PAT }}
@@ -70,26 +67,25 @@ jobs:
           git push origin HEAD:main
 
       - name: Create KUBECONFIG file
-        run: |
-          echo "${{ secrets.KUBECONFIG }}" > kubeconfig.yaml
+        run: echo "$KUBECONFIG" > ./kubeconfig
         env:
-          KUBECONFIG: $GITHUB_WORKSPACE/kubeconfig.yaml
+          KUBECONFIG: ${{ secrets.KUBECONFIG }}
+
+      - name: Set KUBECONFIG environment variable
+        run: echo "KUBECONFIG=$(pwd)/kubeconfig" >> $GITHUB_ENV
 
       - name: Debug KUBECONFIG
         run: |
-          echo "KUBECONFIG content:"
-          cat $GITHUB_WORKSPACE/kubeconfig.yaml
-          echo "Files in workspace:"
-          ls -la $GITHUB_WORKSPACE
+          cat ./kubeconfig
 
       - name: Check KUBECONFIG
         run: |
           kubectl config view
           kubectl get nodes
         env:
-          KUBECONFIG: $GITHUB_WORKSPACE/kubeconfig.yaml
+          KUBECONFIG: $(pwd)/kubeconfig
 
       - name: Deploy to Kubernetes with Helm
-        run: make helm-deploy
         env:
-          KUBECONFIG: $GITHUB_WORKSPACE/kubeconfig.yaml
+          KUBECONFIG: $(pwd)/kubeconfig
+        run: make helm-deploy
