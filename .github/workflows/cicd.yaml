@@ -81,4 +81,13 @@ jobs:
           ls -la ./kubeconfig
 
       - name: Check KUBECONFIG
-        run
+        run: |
+          kubectl config view
+          kubectl get nodes
+        env:
+          KUBECONFIG: ./kubeconfig
+
+      - name: Deploy to Kubernetes with Helm
+        run: make helm-deploy
+        env:
+          KUBECONFIG: ./kubeconfig
