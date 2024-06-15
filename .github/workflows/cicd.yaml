@@ -77,8 +77,10 @@ jobs:
 
       - name: Debug KUBECONFIG
         run: |
+          echo "KUBECONFIG content:"
           cat $GITHUB_WORKSPACE/kubeconfig.yaml
-          ls -la $GITHUB_WORKSPACE/kubeconfig.yaml
+          echo "Files in workspace:"
+          ls -la $GITHUB_WORKSPACE
 
       - name: Check KUBECONFIG
         run: |
