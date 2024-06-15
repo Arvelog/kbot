@@ -29,12 +29,10 @@ jobs:
 
       - name: Build Docker image
         run: |
-          VERSION=$(git describe --tags --abbrev=0)-$(git rev-parse --short HEAD)
           make docker-build
 
       - name: Push Docker image
         run: |
-          VERSION=$(git describe --tags --abbrev=0)-$(git rev-parse --short HEAD)
           make docker-push
 
   cd:
