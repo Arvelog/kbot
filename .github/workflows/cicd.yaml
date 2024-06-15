@@ -66,24 +66,4 @@ jobs:
           git pull origin main
           git stash pop
           git add helm/values.yaml
-          git commit -m "update version $VERSION" --allow-empty
-          git push origin HEAD:main
-
-      - name: Debug KUBECONFIG
-        env:
-          KUBECONFIG: ${{ secrets.KUBECONFIG }}
-        run: |
-          echo "$KUBECONFIG"
-          ls -la $KUBECONFIG
-
-      - name: Check KUBECONFIG
-        env:
-          KUBECONFIG: ${{ secrets.KUBECONFIG }}
-        run: |
-          kubectl config view
-          kubectl get nodes
-
-      - name: Deploy to Kubernetes with Helm
-        env:
-          KUBECONFIG: ${{ secrets.KUBECONFIG }}
-        run: make helm-deploy
+          git commit
