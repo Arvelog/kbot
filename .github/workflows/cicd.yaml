@@ -59,10 +59,17 @@ jobs:
           git config user.name github-actions
           git config user.email github-actions@github.com
           git remote set-url origin https://${{ secrets.GH_PAT }}@github.com/${{ github.repository }}
+          git stash --include-untracked
           git pull origin main
+          git stash pop
           git add helm/values.yaml
           git commit -m "update version $VERSION"
           git push origin HEAD:main
+
+      - name: Debug KUBECONFIG
+        run: |
+          echo "$KUBECONFIG"
+          ls -la $KUBECONFIG
 
       - name: Check KUBECONFIG
         env:
