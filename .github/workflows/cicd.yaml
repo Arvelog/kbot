@@ -71,23 +71,23 @@ jobs:
 
       - name: Create KUBECONFIG file
         run: |
-          echo "${{ secrets.KUBECONFIG }}" > kubeconfig
+          echo "${{ secrets.KUBECONFIG }}" > kubeconfig.yaml
         env:
-          KUBECONFIG: ./kubeconfig
+          KUBECONFIG: $GITHUB_WORKSPACE/kubeconfig.yaml
 
       - name: Debug KUBECONFIG
         run: |
-          cat ./kubeconfig
-          ls -la ./kubeconfig
+          cat $GITHUB_WORKSPACE/kubeconfig.yaml
+          ls -la $GITHUB_WORKSPACE/kubeconfig.yaml
 
       - name: Check KUBECONFIG
         run: |
           kubectl config view
           kubectl get nodes
         env:
-          KUBECONFIG: ./kubeconfig
+          KUBECONFIG: $GITHUB_WORKSPACE/kubeconfig.yaml
 
       - name: Deploy to Kubernetes with Helm
         run: make helm-deploy
         env:
-          KUBECONFIG: ./kubeconfig
+          KUBECONFIG: $GITHUB_WORKSPACE/kubeconfig.yaml
