@@ -52,6 +52,9 @@ jobs:
         with:
           cmd: yq -i '.image.tag=strenv(VERSION)' helm/values.yaml
 
+      - name: Print updated Helm chart values
+        run: cat helm/values.yaml
+
       - name: Commit updated values.yaml
         env:
           GH_PAT: ${{ secrets.GH_PAT }}
