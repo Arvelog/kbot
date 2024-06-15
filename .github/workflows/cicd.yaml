@@ -59,9 +59,17 @@ jobs:
           git config user.name github-actions
           git config user.email github-actions@github.com
           git remote set-url origin https://${{ secrets.GH_PAT }}@github.com/${{ github.repository }}
+          git pull origin main
           git add helm/values.yaml
           git commit -m "update version $VERSION"
           git push origin HEAD:main
+
+      - name: Check KUBECONFIG
+        env:
+          KUBECONFIG: ${{ secrets.KUBECONFIG }}
+        run: |
+          kubectl config view
+          kubectl get nodes
 
       - name: Deploy to Kubernetes with Helm
         env:
