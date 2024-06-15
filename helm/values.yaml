@@ -3,8 +3,8 @@ replicaCount: 1
 image:
   registry: "ghcr.io"
   repository: "arvelog/kbot"
-  pullPolicy: IfNotPresent  # Дозволяє замінити образ за замовчуванням
-  tag: v1.3.0-f602b09
+  pullPolicy: IfNotPresent # Дозволяє замінити образ за замовчуванням
+  tag: v1.3.0-7c04ffd
   os: linux
   arch: amd64
   parameter: go
@@ -12,7 +12,7 @@ image:
 secret:
   name: "kbot"
   env: "TELE_TOKEN"
-  key: "token" 
+  key: "token"
   value: "7090648610:AAEKZl6thxmngf5pzGDWSZek1GHFhN9TiLE"
 securityContext:
   privileged: true
