@@ -1,7 +1,7 @@
 image:
   registry: ghcr.io
   repository: arvelog/kbot
-  tag: "latest"
+  tag: "v1.1.0-$(git rev-parse --short HEAD)test"
   os: linux
   arch: amd64
 
