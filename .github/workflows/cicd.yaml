@@ -48,8 +48,9 @@ jobs:
         run: echo "VERSION=$(git describe --tags --abbrev=0 --always)-$(git rev-parse --short HEAD)" >> $GITHUB_ENV
 
       - name: Update Helm chart values
-        run: |
-          yq -i '.image.tag = strenv(VERSION) | .image.os = "linux" | .image.arch = "amd64"' helm/values.yaml
+        uses: mikefarah/yq@master
+        with:
+          cmd: yq -i '.image.tag=strenv(VERSION)' helm/values.yaml
 
       - name: Commit updated values.yaml
         env:
@@ -61,10 +62,3 @@ jobs:
           git add helm/values.yaml
           git commit -m "update version $VERSION"
           git push origin HEAD:main
-
-      - name: Deploy to Kubernetes
-        env:
-          KUBECONFIG: ${{ secrets.KUBECONFIG }}
-          VERSION: ${{ steps.set_version.outputs.VERSION }}
-        run: |
-          helm upgrade --install kbot helm --namespace my-namespace -f helm/values.yaml --set image.repository=ghcr.io/arvelog/kbot --set image.tag=$(VERSION)
