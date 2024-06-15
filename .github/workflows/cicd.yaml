@@ -66,25 +66,21 @@ jobs:
           git commit -m "update version $VERSION" --allow-empty
           git push origin HEAD:main
 
-      - name: Set KUBERNETES environment variables
-        env:
-          KUBERNETES_SERVICE_HOST: ${{ secrets.KUBERNETES_SERVICE_HOST }}
-          KUBERNETES_SERVICE_PORT: ${{ secrets.KUBERNETES_SERVICE_PORT }}
-          KUBERNETES_TOKEN: ${{ secrets.KUBERNETES_TOKEN }}
+      - name: Set KUBECONFIG
         run: |
-          kubectl config set-cluster default-cluster --server=https://$KUBERNETES_SERVICE_HOST:$KUBERNETES_SERVICE_PORT --insecure-skip-tls-verify=true
-          kubectl config set-credentials default-admin --token=$KUBERNETES_TOKEN
-          kubectl config set-context default-system --cluster=default-cluster --user=default-admin
-          kubectl config use-context default-system
+          mkdir -p ~/.kube
+          echo "${{ secrets.KUBECONFIG }}" > ~/.kube/config
+        env:
+          KUBECONFIG: ${{ secrets.KUBECONFIG }}
 
       - name: Check KUBERNETES configuration
         run: |
           kubectl config view
           kubectl get nodes
+        env:
+          KUBECONFIG: ~/.kube/config
 
       - name: Deploy to Kubernetes with Helm
         run: make helm-deploy
         env:
-          KUBERNETES_SERVICE_HOST: ${{ secrets.KUBERNETES_SERVICE_HOST }}
-          KUBERNETES_SERVICE_PORT: ${{ secrets.KUBERNETES_SERVICE_PORT }}
-          KUBERNETES_TOKEN: ${{ secrets.KUBERNETES_TOKEN }}
+          KUBECONFIG: ~/.kube/config
