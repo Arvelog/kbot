@@ -70,6 +70,8 @@ jobs:
           git push origin HEAD:main
 
       - name: Debug KUBECONFIG
+        env:
+          KUBECONFIG: ${{ secrets.KUBECONFIG }}
         run: |
           echo "$KUBECONFIG"
           ls -la $KUBECONFIG
