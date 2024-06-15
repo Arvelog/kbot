@@ -3,7 +3,7 @@ WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
-RUN go build -o my-bot cmd/my-bot/main.go
+RUN go build -o my-bot main.go
 
 FROM alpine:latest
 WORKDIR /root/
