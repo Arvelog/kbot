@@ -44,7 +44,8 @@ jobs:
         with:
           fetch-depth: 0
 
-      - run: echo "VERSION=$(git describe --tags --abbrev=0 --always)-$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+      - name: Set VERSION environment variable
+        run: echo "VERSION=$(git describe --tags --abbrev=0 --always)-$(git rev-parse --short HEAD)" >> $GITHUB_ENV
 
       - name: Update Helm chart values
         run: |
@@ -64,4 +65,6 @@ jobs:
       - name: Deploy to Kubernetes
         env:
           KUBECONFIG: ${{ secrets.KUBECONFIG }}
-        run: helm upgrade --install kbot helm --namespace my-namespace -f helm/values.yaml --set image.repository=ghcr.io/arvelog/kbot --set image.tag=$(VERSION)
+          VERSION: ${{ steps.set_version.outputs.VERSION }}
+        run: |
+          helm upgrade --install kbot helm --namespace my-namespace -f helm/values.yaml --set image.repository=ghcr.io/arvelog/kbot --set image.tag=$(VERSION)
