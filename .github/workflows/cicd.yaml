@@ -50,11 +50,15 @@ jobs:
         run: |
           yq -i '.image.tag = strenv(VERSION) | .image.os = "linux" | .image.arch = "amd64"' helm/values.yaml
 
-      - run: |
+      - name: Commit updated values.yaml
+        env:
+          GH_PAT: ${{ secrets.GH_PAT }}
+        run: |
           git config user.name github-actions
           git config user.email github-actions@github.com
-          git commit -am "update version $VERSION"
-          git push
+          git add helm/values.yaml
+          git commit -m "update version $VERSION"
+          git push https://github-actions:${{ secrets.GH_PAT }}@github.com/${{ github.repository }} HEAD:main
 
       - name: Deploy to Kubernetes
         env:
