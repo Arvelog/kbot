@@ -33,6 +33,33 @@ jobs:
       - name: Push Docker image
         run: make docker-push
 
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v1
+        with:
+          version: 'latest'
+
+      - name: Install kind
+        run: |
+          curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.11.1/kind-linux-amd64
+          chmod +x ./kind
+          sudo mv ./kind /usr/local/bin/kind
+
+      - name: Create kind cluster
+        run: kind create cluster --name kbot-cluster
+
+      - name: Set up kubeconfig
+        run: |
+          kind get kubeconfig --name kbot-cluster > $HOME/.kube/config
+
+      - name: Deploy to kind cluster
+        run: |
+          helm upgrade --install kbot ./helm
+
+      - name: Run integration tests
+        run: |
+          # Add your integration test commands here
+          echo "Running integration tests..."
+
   cd:
     name: CD
     runs-on: ubuntu-latest
