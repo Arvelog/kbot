@@ -3,16 +3,15 @@ replicaCount: 1
 image:
   registry: "ghcr.io"
   repository: "arvelog/kbot"
-  pullPolicy: IfNotPresent # Дозволяє замінити образ за замовчуванням
+  pullPolicy: IfNotPresent
   tag: v1.5.0-93f1888
   os: linux
   arch: amd64
   parameter: go
-# Додатково визначте секцію для токену TELE_TOKEN
+# Remove the hardcoded TELE_TOKEN
 secret:
   name: "kbot"
   env: "TELE_TOKEN"
   key: "token"
-  value: "7090648610:AAEKZl6thxmngf5pzGDWSZek1GHFhN9TiLE"
 securityContext:
   # Remove the invalid privileged field
