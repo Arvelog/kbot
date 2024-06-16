@@ -68,7 +68,7 @@ jobs:
       - name: Create a Kubernetes cluster with kind
         run: |
           kind create cluster --wait 5m
-          echo "KUBECONFIG=$(kind get kubeconfig-path --name="kind")" >> $GITHUB_ENV
+          echo "KUBECONFIG=$(kind get kubeconfig-path --name=\"kind\")" >> $GITHUB_ENV
 
       - name: Install kubectl
         run: |
@@ -88,6 +88,7 @@ jobs:
 
       - name: Load Docker Image into kind
         run: |
+          docker pull ${DOCKER_IMAGE_NAME}:${VERSION}
           kind load docker-image ${DOCKER_IMAGE_NAME}:${VERSION} --name kind
         env:
           DOCKER_IMAGE_NAME: ${{ env.DOCKER_IMAGE_NAME }}
