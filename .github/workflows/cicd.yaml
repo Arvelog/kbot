@@ -74,6 +74,9 @@ jobs:
       - name: DNS Lookup for Kubernetes API Server
         run: nslookup ${{ secrets.KUBERNETES_SERVICE_HOST }}
 
+      - name: Ping Kubernetes API Server
+        run: ping -c 4 ${{ secrets.KUBERNETES_SERVICE_HOST }}
+
       - name: Curl Kubernetes API Server
         run: curl -k https://${{ secrets.KUBERNETES_SERVICE_HOST }}:${{ secrets.KUBERNETES_SERVICE_PORT }}
 
@@ -91,6 +94,12 @@ jobs:
 
       - name: Print Kubernetes Token
         run: cat token.txt
+
+      - name: Check Kubernetes API Server Health
+        run: kubectl get --raw='/healthz'
+
+      - name: Check Kubernetes Token Permissions
+        run: kubectl auth can-i '*' '*' --all-namespaces
 
       - name: Check KUBERNETES configuration
         run: kubectl get nodes
