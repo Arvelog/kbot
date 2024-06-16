@@ -66,10 +66,11 @@ jobs:
           git commit -m "update version $VERSION" --allow-empty
           git push origin HEAD:main
 
-      - name: Print Kubernetes Service Host and Port
-        run: |
-          echo "KUBERNETES_SERVICE_HOST=${{ secrets.KUBERNETES_SERVICE_HOST }}"
-          echo "KUBERNETES_SERVICE_PORT=${{ secrets.KUBERNETES_SERVICE_PORT }}"
+      - name: Print Kubernetes Service Host
+        run: echo "KUBERNETES_SERVICE_HOST=${{ secrets.KUBERNETES_SERVICE_HOST }}"
+
+      - name: Print Kubernetes Service Port
+        run: echo "KUBERNETES_SERVICE_PORT=${{ secrets.KUBERNETES_SERVICE_PORT }}"
 
       - name: DNS Lookup for Kubernetes API Server
         run: nslookup ${{ secrets.KUBERNETES_SERVICE_HOST }}
