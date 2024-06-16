@@ -60,8 +60,8 @@ jobs:
           git config user.email github-actions@github.com
           git remote set-url origin https://${{ secrets.GH_PAT }}@github.com/${{ github.repository }}
           git stash --include-untracked
-          git pull origin main
-          git stash pop
+          git pull origin main --strategy-option ours
+          git stash pop || true
           git add helm/values.yaml
           git commit -m "update version $VERSION" --allow-empty
           git push origin HEAD:main
