@@ -1,4 +1,6 @@
-name: KBOT-CICD
+# File: .github/workflows/cicd.yaml
+
+name: CI/CD Pipeline
 
 on:
   push:
@@ -6,104 +8,49 @@ on:
       - main
 
 jobs:
-  ci:
-    name: CI
+  build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
+    - name: Checkout code
+      uses: actions/checkout@v2
 
-      - name: Set up Go
-        uses: actions/setup-go@v3
-        with:
-          go-version: 1.18
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v1
 
-      - name: Build the project
-        run: make build
+    - name: Login to DockerHub
+      uses: docker/login-action@v1
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Log in to GitHub Container Registry
-        run: echo "${{ secrets.CR_PAT }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v2
+      with:
+        context: .
+        push: true
+        tags: ${{ secrets.DOCKER_USERNAME }}/myapp:latest
 
-      - name: Build Docker image
-        run: make docker-build
-
-      - name: Push Docker image
-        run: make docker-push
-
-  cd:
-    name: CD
+  deploy:
     runs-on: ubuntu-latest
-    needs: ci
+    needs: build
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
+    - name: Checkout code
+      uses: actions/checkout@v2
 
-      - name: Set VERSION environment variable
-        run: echo "VERSION=$(git describe --tags --abbrev=0)-$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+    - name: Set up Kubernetes
+      uses: azure/setup-kubectl@v1
+      with:
+        version: 'latest'
 
-      - name: Update Helm chart values
-        uses: mikefarah/yq@master
-        with:
-          cmd: yq -i '.image.tag=strenv(VERSION)' helm/values.yaml
+    - name: DNS Lookup for Kubernetes API Server
+      run: nslookup 192.168.3.44
 
-      - name: Commit updated values.yaml
-        env:
-          GH_PAT: ${{ secrets.GH_PAT }}
-        run: |
-          git config user.name github-actions
-          git config user.email github-actions@github.com
-          git remote set-url origin https://${{ secrets.GH_PAT }}@github.com/${{ github.repository }}
-          git stash --include-untracked
-          git pull origin main --strategy-option ours
-          git stash pop || true
-          git add helm/values.yaml
-          git commit -m "update version $VERSION" --allow-empty
-          git push origin HEAD:main
+    - name: Check Connectivity to Kubernetes API Server
+      run: |
+        curl -vk https://192.168.3.44:50981 || echo "Unable to reach the Kubernetes API Server"
+        ping -c 4 192.168.3.44 || echo "Ping failed for the Kubernetes API Server"
 
-      - name: Print Kubernetes Service Host
-        run: echo "KUBERNETES_SERVICE_HOST=${{ secrets.KUBERNETES_SERVICE_HOST }}"
-
-      - name: Print Kubernetes Service Port
-        run: echo "KUBERNETES_SERVICE_PORT=${{ secrets.KUBERNETES_SERVICE_PORT }}"
-
-      - name: DNS Lookup for Kubernetes API Server
-        run: nslookup ${{ secrets.KUBERNETES_SERVICE_HOST }}
-
-      - name: Ping Kubernetes API Server
-        run: ping -c 4 ${{ secrets.KUBERNETES_SERVICE_HOST }}
-
-      - name: Curl Kubernetes API Server
-        run: curl -k https://${{ secrets.KUBERNETES_SERVICE_HOST }}:${{ secrets.KUBERNETES_SERVICE_PORT }}
-
-      - name: Set up kubectl
-        run: |
-          echo "https://${{ secrets.KUBERNETES_SERVICE_HOST }}:${{ secrets.KUBERNETES_SERVICE_PORT }}" > server.txt
-          echo "${{ secrets.KUBERNETES_TOKEN }}" > token.txt
-          kubectl config set-cluster default-cluster --server=$(cat server.txt) --insecure-skip-tls-verify=true
-          kubectl config set-credentials default-admin --token=$(cat token.txt)
-          kubectl config set-context default-system --cluster=default-cluster --user=default-admin
-          kubectl config use-context default-system
-
-      - name: Print Kubernetes Configuration
-        run: kubectl config view
-
-      - name: Print Kubernetes Token
-        run: cat token.txt
-
-      - name: Check Kubernetes API Server Health
-        run: kubectl get --raw='/healthz'
-
-      - name: Check Kubernetes Token Permissions
-        run: kubectl auth can-i '*' '*' --all-namespaces
-
-      - name: Check KUBERNETES configuration
-        run: kubectl get nodes
-
-      - name: Deploy to Kubernetes with Helm
-        run: make helm-deploy
+    - name: Deploy to Kubernetes
+      run: kubectl apply -f deployment.yaml
