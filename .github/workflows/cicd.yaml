@@ -40,9 +40,11 @@ jobs:
           VERSION=$(git describe --tags --always --dirty=-$(git rev-parse --short HEAD) || echo "latest")
           echo "VERSION=${VERSION}" >> $GITHUB_ENV
           echo "::set-output name=version::${VERSION}"
-        outputs:
-          version: ${{ steps.vars.outputs.version }}
 
+    outputs:
+      version: ${{ steps.vars.outputs.version }}
+
+    steps:
       - name: Build Docker image
         run: make docker-build
 
@@ -96,22 +98,4 @@ jobs:
 
       - name: Install Helm (if needed)
         run: |
-          curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3
-          chmod 700 get_helm.sh
-          ./get_helm.sh
-
-      - name: Pull Docker Image from Registry
-        run: |
-          docker pull ${DOCKER_IMAGE_NAME}:${VERSION}
-        env:
-          DOCKER_IMAGE_NAME: ${{ env.DOCKER_IMAGE_NAME }}
-          VERSION: ${{ env.VERSION }}
-
-      - name: Deploy to Kubernetes with Helm
-        run: |
-          helm upgrade --install my-release helm/ --set image.tag=$VERSION
-
-      - name: Verify Deployment
-        run: |
-          kubectl rollout status deployment/my-deployment
-          kubectl get services -o wide
+          curl -fsSL -o get_helm.sh https
