@@ -4,7 +4,7 @@ image:
   registry: "ghcr.io"
   repository: "arvelog/kbot"
   pullPolicy: IfNotPresent # Дозволяє замінити образ за замовчуванням
-  tag: v1.5.0-93f1888
+  tag: v1.5.0-8101651
   os: linux
   arch: amd64
   parameter: go
@@ -15,4 +15,4 @@ secret:
   key: "token"
   value: "7090648610:AAEKZl6thxmngf5pzGDWSZek1GHFhN9TiLE"
 securityContext:
-  # Remove the invalid privileged field
+# Remove the invalid privileged field
