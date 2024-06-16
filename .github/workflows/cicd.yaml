@@ -44,11 +44,12 @@ jobs:
     outputs:
       version: ${{ steps.vars.outputs.version }}
 
-    - name: Build Docker image
-      run: make docker-build
+    steps:
+      - name: Build Docker image
+        run: make docker-build
 
-    - name: Push Docker image
-      run: make docker-push
+      - name: Push Docker image
+        run: make docker-push
 
   cd:
     name: CD
@@ -100,19 +101,3 @@ jobs:
           curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3
           chmod 700 get_helm.sh
           ./get_helm.sh
-
-      - name: Pull Docker Image from Registry
-        run: |
-          docker pull ${DOCKER_IMAGE_NAME}:${VERSION}
-        env:
-          DOCKER_IMAGE_NAME: ${{ env.DOCKER_IMAGE_NAME }}
-          VERSION: ${{ env.VERSION }}
-
-      - name: Deploy to Kubernetes with Helm
-        run: |
-          helm upgrade --install my-release helm/ --set image.tag=$VERSION
-
-      - name: Verify Deployment
-        run: |
-          kubectl rollout status deployment/my-deployment
-          kubectl get services -o wide
