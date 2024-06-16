@@ -1,5 +1,3 @@
-# File: .github/workflows/cicd.yaml
-
 name: KBOT-CICD
 
 on:
@@ -41,8 +39,7 @@ jobs:
         run: |
           VERSION=$(git describe --tags --always --dirty=-$(git rev-parse --short HEAD) || echo "latest")
           echo "VERSION=${VERSION}" >> $GITHUB_ENV
-        outputs:
-          version: ${{ steps.vars.outputs.version }}
+          echo "::set-output name=version::${VERSION}"
 
       - name: Build Docker image
         run: make docker-build
