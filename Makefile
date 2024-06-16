@@ -1,24 +1,23 @@
-.PHONY: all build docker-build docker-push helm-deploy
+# File: Makefile
 
-REGISTRY := ghcr.io/arvelog
-IMAGE := $(REGISTRY)/kbot
+# Variables
+DOCKER_IMAGE_NAME=ghcr.io/arvelog/kbot
+DOCKER_TAG=$(shell git describe --tags --always --dirty=-$(shell git rev-parse --short HEAD) 2>/dev/null || echo "latest")
+TARGETARCH=amd64
 
-VERSION := $(shell git describe --tags --abbrev=0)-$(shell git rev-parse --short HEAD)
-
-all: build docker-build docker-push helm-deploy
-
-build:
-	@echo "Building the project..."
-	go build -o bin/my-bot ./main.go
-
+# Targets
 docker-build:
 	@echo "Building Docker image..."
-	docker build . -t $(IMAGE):$(VERSION) --build-arg TARGETARCH=amd64
+	docker build . -t $(DOCKER_IMAGE_NAME):$(DOCKER_TAG) --build-arg TARGETARCH=$(TARGETARCH)
 
 docker-push:
-	@echo "Pushing Docker image..."
-	docker push $(IMAGE):$(VERSION)
+	docker push $(DOCKER_IMAGE_NAME):$(DOCKER_TAG)
 
-helm-deploy:
-	@echo "Deploying to Kubernetes with Helm..."
-	helm upgrade --install kbot ./helm --namespace my-namespace -f helm/values.yaml --set image.repository=$(IMAGE) --set image.tag=$(VERSION)
+build:
+	go build -o myapp main.go
+
+run:
+	docker run -d $(DOCKER_IMAGE_NAME):$(DOCKER_TAG)
+
+deploy:
+	kubectl apply -f deployment.yaml

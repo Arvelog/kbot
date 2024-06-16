@@ -1,3 +1,5 @@
+# File: .github/workflows/cicd.yaml
+
 name: KBOT-CICD
 
 on:
@@ -13,6 +15,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # Ensure full history is fetched for `git describe`
 
       - name: Set up Go
         uses: actions/setup-go@v3
@@ -25,8 +29,15 @@ jobs:
       - name: Log in to GitHub Container Registry
         run: echo "${{ secrets.CR_PAT }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
+      - name: Ensure Git Tags Exist
+        run: |
+          if ! git describe --tags --abbrev=0; then
+            git tag -a v0.0.1 -m "Initial tag"
+            git push origin --tags
+          fi
+
       - name: Build Docker image
-        run:  make docker-build
+        run: make docker-build
 
       - name: Push Docker image
         run: make docker-push
@@ -57,16 +68,9 @@ jobs:
           chmod +x kubectl
           sudo mv kubectl /usr/local/bin/
 
-      - name: Ensure Git Tags Exist
-        run: |
-          if ! git describe --tags --abbrev=0; then
-            git tag -a v0.0.1 -m "Initial tag"
-            git push origin --tags
-          fi
-
       - name: Set VERSION environment variable
         run: |
-          VERSION=$(git describe --tags --abbrev=0)-$(git rev-parse --short HEAD || echo "unknown")
+          VERSION=$(git describe --tags --always --dirty=-$(git rev-parse --short HEAD) || echo "latest")
           echo "VERSION=${VERSION}" >> $GITHUB_ENV
 
       - name: Update Helm chart values using yq
@@ -76,7 +80,7 @@ jobs:
 
       - name: Load Docker Image into kind
         run: |
-          kind load docker-image my-image:tag --name kind
+          kind load docker-image $(DOCKER_IMAGE_NAME):$(VERSION) --name kind
 
       - name: Commit updated values.yaml
         env:
