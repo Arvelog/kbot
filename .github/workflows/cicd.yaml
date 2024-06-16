@@ -71,6 +71,12 @@ jobs:
           echo "KUBERNETES_SERVICE_HOST=${{ secrets.KUBERNETES_SERVICE_HOST }}"
           echo "KUBERNETES_SERVICE_PORT=${{ secrets.KUBERNETES_SERVICE_PORT }}"
 
+      - name: DNS Lookup for Kubernetes API Server
+        run: nslookup ${{ secrets.KUBERNETES_SERVICE_HOST }}
+
+      - name: Curl Kubernetes API Server
+        run: curl -k https://${{ secrets.KUBERNETES_SERVICE_HOST }}:${{ secrets.KUBERNETES_SERVICE_PORT }}
+
       - name: Set up kubectl
         run: |
           echo "https://${{ secrets.KUBERNETES_SERVICE_HOST }}:${{ secrets.KUBERNETES_SERVICE_PORT }}" > server.txt
