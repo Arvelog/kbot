@@ -37,6 +37,7 @@ jobs:
           fi
 
       - name: Set VERSION environment variable
+        id: vars
         run: |
           VERSION=$(git describe --tags --always --dirty=-$(git rev-parse --short HEAD) || echo "latest")
           echo "VERSION=${VERSION}" >> $GITHUB_ENV
@@ -80,13 +81,15 @@ jobs:
         uses: mikefarah/yq@v4.27.5
         with:
           cmd: yq -i '.image.tag=strenv(VERSION)' helm/values.yaml
+        env:
+          VERSION: ${{ env.VERSION }}
 
       - name: Load Docker Image into kind
+        run: |
+          kind load docker-image ${DOCKER_IMAGE_NAME}:${VERSION} --name kind
         env:
           DOCKER_IMAGE_NAME: ${{ env.DOCKER_IMAGE_NAME }}
           VERSION: ${{ env.VERSION }}
-        run: |
-          kind load docker-image ${DOCKER_IMAGE_NAME}:${VERSION} --name kind
 
       - name: Commit updated values.yaml
         env:
