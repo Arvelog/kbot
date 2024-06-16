@@ -1,3 +1,5 @@
+# File: .github/workflows/cicd.yaml
+
 name: KBOT-CICD
 
 on:
@@ -35,17 +37,22 @@ jobs:
           fi
 
       - name: Set VERSION environment variable
-        id: vars
+        id: set_version
         run: |
           VERSION=$(git describe --tags --always --dirty=-$(git rev-parse --short HEAD) || echo "latest")
           echo "VERSION=${VERSION}" >> $GITHUB_ENV
-          echo "::set-output name=version::${VERSION}"
+        outputs:
+          VERSION: ${{ steps.set_version.outputs.VERSION }}
 
       - name: Build Docker image
         run: make docker-build
+        env:
+          VERSION: ${{ steps.set_version.outputs.VERSION }}
 
       - name: Push Docker image
         run: make docker-push
+        env:
+          VERSION: ${{ steps.set_version.outputs.VERSION }}
 
   cd:
     name: CD
@@ -56,8 +63,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
-      - name: Set VERSION environment variable
-        run: echo "VERSION=${{ needs.ci.outputs.vars.version }}" >> $GITHUB_ENV
+      - name: Install kind
+        run: |
+          curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.14.0/kind-linux-amd64
+          chmod +x ./kind
+          sudo mv ./kind /usr/local/bin/kind
+
+      - name: Create a Kubernetes cluster with kind
+        run: |
+          kind create cluster --wait 5m
+          echo "KUBECONFIG=$(kind get kubeconfig-path --name="kind")" >> $GITHUB_ENV
 
       - name: Install kubectl
         run: |
@@ -73,18 +88,19 @@ jobs:
         with:
           cmd: yq -i '.image.tag=strenv(VERSION)' helm/values.yaml
         env:
-          VERSION: ${{ env.VERSION }}
+          VERSION: ${{ steps.set_version.outputs.VERSION }}
 
-      - name: Load Docker Image into Docker Desktop Kubernetes
+      - name: Load Docker Image into kind
         run: |
-          docker image load -i ${DOCKER_IMAGE_NAME}:${VERSION}
+          kind load docker-image ${DOCKER_IMAGE_NAME}:${VERSION} --name kind
         env:
-          DOCKER_IMAGE_NAME: ${{ env.DOCKER_IMAGE_NAME }}
-          VERSION: ${{ env.VERSION }}
+          DOCKER_IMAGE_NAME: ghcr.io/arvelog/kbot
+          VERSION: ${{ steps.set_version.outputs.VERSION }}
 
       - name: Commit updated values.yaml
         env:
           GH_PAT: ${{ secrets.GH_PAT }}
+          VERSION: ${{ steps.set_version.outputs.VERSION }}
         run: |
           git config user.name github-actions
           git config user.email github-actions@github.com
@@ -105,6 +121,8 @@ jobs:
       - name: Deploy to Kubernetes with Helm
         run: |
           helm upgrade --install my-release helm/ --set image.tag=$VERSION
+        env:
+          VERSION: ${{ steps.set_version.outputs.VERSION }}
 
       - name: Verify Deployment
         run: |
