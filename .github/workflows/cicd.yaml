@@ -70,6 +70,7 @@ jobs:
         run: |
           mkdir -p ~/.kube
           echo "${{ secrets.KUBECONFIG }}" | base64 -d > ~/.kube/config
+          cat ~/.kube/config  # Debugging step to verify the content
         env:
           KUBECONFIG: ${{ secrets.KUBECONFIG }}
 
