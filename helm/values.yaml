@@ -4,7 +4,7 @@ image:
   registry: "ghcr.io"
   repository: "arvelog/kbot"
   pullPolicy: IfNotPresent
-  tag: v1.5.0-e5b365e
+  tag: v1.5.0-6ab133a
   os: linux
   arch: amd64
   parameter: go
