@@ -14,4 +14,4 @@ secret:
   env: "TELE_TOKEN"
   key: "token"
 securityContext:
-  # Remove the invalid privileged field
+# Remove the invalid privileged field
