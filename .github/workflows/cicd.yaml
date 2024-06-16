@@ -36,6 +36,11 @@ jobs:
             git push origin --tags
           fi
 
+      - name: Set VERSION environment variable
+        run: |
+          VERSION=$(git describe --tags --always --dirty=-$(git rev-parse --short HEAD) || echo "latest")
+          echo "VERSION=${VERSION}" >> $GITHUB_ENV
+
       - name: Build Docker image
         run: make docker-build
 
@@ -68,10 +73,8 @@ jobs:
           chmod +x kubectl
           sudo mv kubectl /usr/local/bin/
 
-      - name: Set VERSION environment variable
-        run: |
-          VERSION=$(git describe --tags --always --dirty=-$(git rev-parse --short HEAD) || echo "latest")
-          echo "VERSION=${VERSION}" >> $GITHUB_ENV
+      - name: Set DOCKER_IMAGE_NAME environment variable
+        run: echo "DOCKER_IMAGE_NAME=ghcr.io/arvelog/kbot" >> $GITHUB_ENV
 
       - name: Update Helm chart values using yq
         uses: mikefarah/yq@v4.27.5
@@ -79,8 +82,11 @@ jobs:
           cmd: yq -i '.image.tag=strenv(VERSION)' helm/values.yaml
 
       - name: Load Docker Image into kind
+        env:
+          DOCKER_IMAGE_NAME: ${{ env.DOCKER_IMAGE_NAME }}
+          VERSION: ${{ env.VERSION }}
         run: |
-          kind load docker-image $(DOCKER_IMAGE_NAME):$(VERSION) --name kind
+          kind load docker-image ${DOCKER_IMAGE_NAME}:${VERSION} --name kind
 
       - name: Commit updated values.yaml
         env:
