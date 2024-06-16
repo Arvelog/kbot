@@ -15,4 +15,4 @@ secret:
   key: "token"
   value: "7090648610:AAEKZl6thxmngf5pzGDWSZek1GHFhN9TiLE"
 securityContext:
-  privileged: true
+  # Remove the invalid privileged field
