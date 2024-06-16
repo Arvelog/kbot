@@ -13,8 +13,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
 
       - name: Set up Go
         uses: actions/setup-go@v3
@@ -28,37 +26,10 @@ jobs:
         run: echo "${{ secrets.CR_PAT }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
       - name: Build Docker image
-        run: make docker-build
+        run:  make docker-build
 
       - name: Push Docker image
         run: make docker-push
-
-      - name: Install kubectl
-        uses: azure/setup-kubectl@v1
-        with:
-          version: 'latest'
-
-      - name: Install kind
-        run: |
-          curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.11.1/kind-linux-amd64
-          chmod +x ./kind
-          sudo mv ./kind /usr/local/bin/kind
-
-      - name: Create kind cluster
-        run: kind create cluster --name kbot-cluster
-
-      - name: Set up kubeconfig
-        run: |
-          kind get kubeconfig --name kbot-cluster > $HOME/.kube/config
-
-      - name: Deploy to kind cluster
-        run: |
-          helm upgrade --install kbot ./helm
-
-      - name: Run integration tests
-        run: |
-          # Add your integration test commands here
-          echo "Running integration tests..."
 
   cd:
     name: CD
@@ -68,8 +39,23 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
+
+      - name: Install kind
+        run: |
+          curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.14.0/kind-linux-amd64
+          chmod +x ./kind
+          sudo mv ./kind /usr/local/bin/kind
+
+      - name: Create a Kubernetes cluster with kind
+        run: |
+          kind create cluster --wait 5m
+          echo "KUBECONFIG=$(kind get kubeconfig-path --name="kind")" >> $GITHUB_ENV
+
+      - name: Install kubectl
+        run: |
+          curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+          chmod +x kubectl
+          sudo mv kubectl /usr/local/bin/
 
       - name: Ensure Git Tags Exist
         run: |
@@ -83,10 +69,14 @@ jobs:
           VERSION=$(git describe --tags --abbrev=0)-$(git rev-parse --short HEAD)
           echo "VERSION=${VERSION}" >> $GITHUB_ENV
 
-      - name: Update Helm chart values
+      - name: Update Helm chart values using yq
         uses: mikefarah/yq@v4.27.5
         with:
           cmd: yq -i '.image.tag=strenv(VERSION)' helm/values.yaml
+
+      - name: Load Docker Image into kind
+        run: |
+          kind load docker-image my-image:tag --name kind
 
       - name: Commit updated values.yaml
         env:
@@ -102,27 +92,17 @@ jobs:
           git commit -m "update version $VERSION" --allow-empty
           git push origin HEAD:main
 
-      - name: Check Kubernetes API Server Connectivity
-        run: curl -k http://127.0.0.1:6443 || echo "API server check failed"
-
-      - name: Set up kubectl
+      - name: Install Helm (if needed)
         run: |
-          kubectl config set-cluster default-cluster --server=https://${{ secrets.KUBERNETES_SERVICE_HOST }}:${{ secrets.KUBERNETES_SERVICE_PORT }} --insecure-skip-tls-verify=true
-          kubectl config set-credentials default-admin --token=${{ secrets.KUBERNETES_TOKEN }}
-          kubectl config set-context default-system --cluster=default-cluster --user=default-admin
-          kubectl config use-context default-system
-
-      - name: Print Kubernetes Configuration
-        run: kubectl config view
-
-      - name: Check Kubernetes API Server Health
-        run: kubectl get --raw='/healthz'
-
-      - name: Check Kubernetes Token Permissions
-        run: kubectl auth can-i '*' '*' --all-namespaces
-
-      - name: Check Kubernetes Nodes
-        run: kubectl get nodes
+          curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3
+          chmod 700 get_helm.sh
+          ./get_helm.sh
 
       - name: Deploy to Kubernetes with Helm
-        run: make helm-deploy
+        run: |
+          helm upgrade --install my-release helm/ --set image.tag=$VERSION
+
+      - name: Verify Deployment
+        run: |
+          kubectl rollout status deployment/my-deployment
+          kubectl get services -o wide
