@@ -4,7 +4,7 @@ image:
   registry: "ghcr.io"
   repository: "arvelog/kbot"
   pullPolicy: IfNotPresent # Дозволяє замінити образ за замовчуванням
-  tag: v1.5.0-ae6d493
+  tag: v1.5.0-93f1888
   os: linux
   arch: amd64
   parameter: go
