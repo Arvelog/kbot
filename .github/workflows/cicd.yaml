@@ -66,10 +66,11 @@ jobs:
           git commit -m "update version $VERSION" --allow-empty
           git push origin HEAD:main
 
-      - name: Print Kubernetes Service Host and Port
-        run: |
-          echo "KUBERNETES_SERVICE_HOST=${{ secrets.KUBERNETES_SERVICE_HOST }}"
-          echo "KUBERNETES_SERVICE_PORT=${{ secrets.KUBERNETES_SERVICE_PORT }}"
+      - name: Print Kubernetes Service Host
+        run: echo "KUBERNETES_SERVICE_HOST=${{ secrets.KUBERNETES_SERVICE_HOST }}"
+
+      - name: Print Kubernetes Service Port
+        run: echo "KUBERNETES_SERVICE_PORT=50981"
 
       - name: DNS Lookup for Kubernetes API Server
         run: nslookup ${{ secrets.KUBERNETES_SERVICE_HOST }}
@@ -78,11 +79,11 @@ jobs:
         run: ping -c 4 ${{ secrets.KUBERNETES_SERVICE_HOST }}
 
       - name: Curl Kubernetes API Server
-        run: curl -k https://${{ secrets.KUBERNETES_SERVICE_HOST }}:${{ secrets.KUBERNETES_SERVICE_PORT }}
+        run: curl -k https://${{ secrets.KUBERNETES_SERVICE_HOST }}:50981
 
       - name: Set up kubectl
         run: |
-          echo "https://${{ secrets.KUBERNETES_SERVICE_HOST }}:${{ secrets.KUBERNETES_SERVICE_PORT }}" > server.txt
+          echo "https://${{ secrets.KUBERNETES_SERVICE_HOST }}:50981" > server.txt
           echo "${{ secrets.KUBERNETES_TOKEN }}" > token.txt
           kubectl config set-cluster default-cluster --server=$(cat server.txt) --insecure-skip-tls-verify=true
           kubectl config set-credentials default-admin --token=$(cat token.txt)
