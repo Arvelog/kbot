@@ -40,6 +40,8 @@ jobs:
           VERSION=$(git describe --tags --always --dirty=-$(git rev-parse --short HEAD) || echo "latest")
           echo "VERSION=${VERSION}" >> $GITHUB_ENV
           echo "::set-output name=version::${VERSION}"
+        outputs:
+          version: ${{ steps.vars.outputs.version }}
 
       - name: Build Docker image
         run: make docker-build
@@ -55,6 +57,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
+
+      - name: Debug VERSION
+        run: echo "VERSION=${{ needs.ci.outputs.version }}"
 
       - name: Set VERSION environment variable
         run: echo "VERSION=${{ needs.ci.outputs.version }}" >> $GITHUB_ENV
