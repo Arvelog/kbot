@@ -44,12 +44,6 @@ jobs:
     outputs:
       version: ${{ steps.vars.outputs.version }}
 
-    - name: Build Docker image
-      run: make docker-build
-
-    - name: Push Docker image
-      run: make docker-push
-
   cd:
     name: CD
     runs-on: ubuntu-latest
