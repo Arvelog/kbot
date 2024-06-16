@@ -80,10 +80,14 @@ jobs:
           kubectl config set-context default-system --cluster=default-cluster --user=default-admin
           kubectl config use-context default-system
 
+      - name: Print Kubernetes Configuration
+        run: kubectl config view
+
+      - name: Print Kubernetes Token
+        run: cat token.txt
+
       - name: Check KUBERNETES configuration
-        run: |
-          kubectl config view
-          kubectl get nodes
+        run: kubectl get nodes
 
       - name: Deploy to Kubernetes with Helm
         run: make helm-deploy
