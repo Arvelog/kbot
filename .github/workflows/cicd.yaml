@@ -75,6 +75,13 @@ jobs:
         env:
           VERSION: ${{ env.VERSION }}
 
+      - name: Load Docker Image into Docker Desktop Kubernetes
+        run: |
+          docker image load -i ${DOCKER_IMAGE_NAME}:${VERSION}
+        env:
+          DOCKER_IMAGE_NAME: ${{ env.DOCKER_IMAGE_NAME }}
+          VERSION: ${{ env.VERSION }}
+
       - name: Commit updated values.yaml
         env:
           GH_PAT: ${{ secrets.GH_PAT }}
