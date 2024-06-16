@@ -1,4 +1,6 @@
-name: KBOT-CICD
+# File: .github/workflows/cicd.yaml
+
+name: CI/CD Pipeline
 
 on:
   push:
@@ -6,123 +8,49 @@ on:
       - main
 
 jobs:
-  ci:
-    name: CI
+  build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
+    - name: Checkout code
+      uses: actions/checkout@v2
 
-      - name: Set up Go
-        uses: actions/setup-go@v3
-        with:
-          go-version: 1.18
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v1
 
-      - name: Build the project
-        run: make build
+    - name: Login to DockerHub
+      uses: docker/login-action@v1
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Log in to GitHub Container Registry
-        run: echo "${{ secrets.CR_PAT }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v2
+      with:
+        context: .
+        push: true
+        tags: ${{ secrets.DOCKER_USERNAME }}/myapp:latest
 
-      - name: Build Docker image
-        run: make docker-build
-
-      - name: Push Docker image
-        run: make docker-push
-
-      - name: Install kubectl
-        uses: azure/setup-kubectl@v1
-        with:
-          version: 'latest'
-
-      - name: Install kind
-        run: |
-          curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.11.1/kind-linux-amd64
-          chmod +x ./kind
-          sudo mv ./kind /usr/local/bin/kind
-
-      - name: Create kind cluster
-        run: kind create cluster --name kbot-cluster
-
-      - name: Set up kubeconfig
-        run: |
-          kind get kubeconfig --name kbot-cluster > $HOME/.kube/config
-
-      - name: Deploy to kind cluster
-        run: |
-          helm upgrade --install kbot ./helm
-
-      - name: Run integration tests
-        run: |
-          # Add your integration test commands here
-          echo "Running integration tests..."
-
-  cd:
-    name: CD
+  deploy:
     runs-on: ubuntu-latest
-    needs: ci
+    needs: build
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
+    - name: Checkout code
+      uses: actions/checkout@v2
 
-      - name: Ensure Git Tags Exist
-        run: |
-          if ! git describe --tags --abbrev=0; then
-            git tag -a v0.0.1 -m "Initial tag"
-            git push origin --tags
-          fi
+    - name: Set up Kubernetes
+      uses: azure/setup-kubectl@v1
+      with:
+        version: 'latest'
 
-      - name: Set VERSION environment variable
-        run: |
-          VERSION=$(git describe --tags --abbrev=0)-$(git rev-parse --short HEAD)
-          echo "VERSION=${VERSION}" >> $GITHUB_ENV
+    - name: DNS Lookup for Kubernetes API Server
+      run: nslookup 127.0.0.1
 
-      - name: Update Helm chart values
-        uses: mikefarah/yq@v4.27.5
-        with:
-          cmd: yq -i '.image.tag=strenv(VERSION)' helm/values.yaml
+    - name: Check Connectivity to Kubernetes API Server
+      run: |
+        curl -vk http://127.0.0.1:6443 || echo "Unable to reach the Kubernetes API Server"
+        ping -c 4 127.0.0.1 || echo "Ping failed for the Kubernetes API Server"
 
-      - name: Commit updated values.yaml
-        env:
-          GH_PAT: ${{ secrets.GH_PAT }}
-        run: |
-          git config user.name github-actions
-          git config user.email github-actions@github.com
-          git remote set-url origin https://${{ secrets.GH_PAT }}@github.com/${{ github.repository }}
-          git stash --include-untracked
-          git pull origin main --strategy-option ours
-          git stash pop || true
-          git add helm/values.yaml
-          git commit -m "update version $VERSION" --allow-empty
-          git push origin HEAD:main
-
-      - name: Check Kubernetes API Server Connectivity
-        run: curl -m 5 -k https://${{ secrets.KUBERNETES_SERVICE_HOST }}:${{ secrets.KUBERNETES_SERVICE_PORT }} || echo "API server check failed"
-
-      - name: Set up kubectl
-        run: |
-          kubectl config set-cluster default-cluster --server=https://${{ secrets.KUBERNETES_SERVICE_HOST }}:${{ secrets.KUBERNETES_SERVICE_PORT }} --insecure-skip-tls-verify=true
-          kubectl config set-credentials default-admin --token=${{ secrets.KUBERNETES_TOKEN }}
-          kubectl config set-context default-system --cluster=default-cluster --user=default-admin
-          kubectl config use-context default-system
-
-      - name: Print Kubernetes Configuration
-        run: kubectl config view
-
-      - name: Check Kubernetes API Server Health
-        run: kubectl get --raw='/healthz'
-
-      - name: Check Kubernetes Token Permissions
-        run: kubectl auth can-i '*' '*' --all-namespaces
-
-      - name: Check Kubernetes Nodes
-        run: kubectl get nodes
-
-      - name: Deploy to Kubernetes with Helm
-        run: make helm-deploy
+    - name: Deploy to Kubernetes
+      run: kubectl apply -f deployment.yaml --server=http://127.0.0.1:6443
