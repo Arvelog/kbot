@@ -98,15 +98,7 @@ jobs:
       - name: Pull Docker Image from Registry
         run: |
           docker pull ${DOCKER_IMAGE_NAME}:${VERSION}
-        env:
-          DOCKER_IMAGE_NAME: ${{ env.DOCKER_IMAGE_NAME }}
-          VERSION: ${{ env.VERSION }}
-
-      - name: Deploy to Kubernetes with Helm
-        run: |
-          helm upgrade --install my-release helm/ --set image.tag=$VERSION
-
-      - name: Verify Deployment
-        run: |
-          kubectl rollout status deployment/my-deployment
-          kubectl get services -o wide
+          shell: /usr/bin/bash -e {0}
+          env:
+            VERSION: ${{ env.VERSION }}
+            DOCKER_IMAGE_NAME: ghcr.io/arvelog/kbot
