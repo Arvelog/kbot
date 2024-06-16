@@ -41,6 +41,18 @@ jobs:
           echo "VERSION=${VERSION}" >> $GITHUB_ENV
           echo "::set-output name=version::${VERSION}"
 
+      - name: Build Docker Image
+        run: |
+          docker build -t ghcr.io/arvelog/kbot:${{ steps.vars.outputs.version }} .
+        env:
+          VERSION: ${{ steps.vars.outputs.version }}
+
+      - name: Push Docker Image to Registry
+        run: |
+          docker push ghcr.io/arvelog/kbot:${{ steps.vars.outputs.version }}
+        env:
+          VERSION: ${{ steps.vars.outputs.version }}
+
     outputs:
       version: ${{ steps.vars.outputs.version }}
 
