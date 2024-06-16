@@ -59,17 +59,6 @@ jobs:
       - name: Set VERSION environment variable
         run: echo "VERSION=${{ needs.ci.outputs.vars.version }}" >> $GITHUB_ENV
 
-      - name: Install kind
-        run: |
-          curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.14.0/kind-linux-amd64
-          chmod +x ./kind
-          sudo mv ./kind /usr/local/bin/kind
-
-      - name: Create a Kubernetes cluster with kind
-        run: |
-          kind create cluster --wait 5m
-          echo "KUBECONFIG=$(kind get kubeconfig-path --name=\"kind\")" >> $GITHUB_ENV
-
       - name: Install kubectl
         run: |
           curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
@@ -86,10 +75,9 @@ jobs:
         env:
           VERSION: ${{ env.VERSION }}
 
-      - name: Load Docker Image into kind
+      - name: Load Docker Image into Docker Desktop Kubernetes
         run: |
-          docker pull ${DOCKER_IMAGE_NAME}:${VERSION}
-          kind load docker-image ${DOCKER_IMAGE_NAME}:${VERSION} --name kind
+          docker image load -i ${DOCKER_IMAGE_NAME}:${VERSION}
         env:
           DOCKER_IMAGE_NAME: ${{ env.DOCKER_IMAGE_NAME }}
           VERSION: ${{ env.VERSION }}
