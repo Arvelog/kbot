@@ -44,12 +44,11 @@ jobs:
     outputs:
       version: ${{ steps.vars.outputs.version }}
 
-    steps:
-      - name: Build Docker image
-        run: make docker-build
+    - name: Build Docker image
+      run: make docker-build
 
-      - name: Push Docker image
-        run: make docker-push
+    - name: Push Docker image
+      run: make docker-push
 
   cd:
     name: CD
