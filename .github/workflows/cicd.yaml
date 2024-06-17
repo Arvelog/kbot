@@ -194,8 +194,15 @@ jobs:
           curl -sSL -o /usr/local/bin/argocd https://github.com/argoproj/argo-cd/releases/download/v2.0.0/argocd-linux-amd64
           chmod +x /usr/local/bin/argocd
 
+      - name: Reset Argo CD Admin Password
+        run: |
+          argocd admin password reset --password newpassword
+        env:
+          ARGOCD_SERVER_URL: ${{ steps.get-argocd-url.outputs.argocd_url }}
+          ARGOCD_PASSWORD: ${{ steps.get-argocd-password.outputs.argocd_password }}
+
       - name: Login to Argo CD
-        run: argocd login ${{ steps.get-argocd-url.outputs.argocd_url }} --username admin --password ${{ steps.get-argocd-password.outputs.argocd_password }} --insecure
+        run: argocd login ${{ steps.get-argocd-url.outputs.argocd_url }} --username admin --password newpassword --insecure
 
       - name: Sync Application with Argo CD
         run: argocd app sync my-app
