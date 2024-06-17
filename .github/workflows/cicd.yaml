@@ -137,6 +137,13 @@ jobs:
           echo "ARGOCD_SERVER_URL=${ARGOCD_SERVER_URL}" >> $GITHUB_ENV
           echo "::set-output name=argocd_url::${ARGOCD_SERVER_URL}"
 
+      - name: Retrieve Argo CD Admin Password
+        id: get-argocd-password
+        run: |
+          ARGOCD_PASSWORD=$(kubectl get pods -n argocd -l app.kubernetes.io/name=argocd-server -o jsonpath='{.items[0].metadata.name}')
+          echo "ARGOCD_PASSWORD=${ARGOCD_PASSWORD}" >> $GITHUB_ENV
+          echo "::set-output name=argocd_password::${ARGOCD_PASSWORD}"
+
       - name: Update Helm chart values using yq
         uses: mikefarah/yq@v4.27.5
         with:
@@ -188,7 +195,7 @@ jobs:
           chmod +x /usr/local/bin/argocd
 
       - name: Login to Argo CD
-        run: argocd login ${{ steps.get-argocd-url.outputs.argocd_url }} --username admin --password ${{ secrets.ARGOCD_PASSWORD }} --insecure
+        run: argocd login ${{ steps.get-argocd-url.outputs.argocd_url }} --username admin --password ${{ steps.get-argocd-password.outputs.argocd_password }} --insecure
 
       - name: Sync Application with Argo CD
         run: argocd app sync my-app
