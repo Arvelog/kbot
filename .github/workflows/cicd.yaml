@@ -143,5 +143,6 @@ jobs:
 
       - name: Verify Deployment
         run: |
+          kubectl get deployments
           kubectl rollout status deployment/my-release
           kubectl get services -o wide
