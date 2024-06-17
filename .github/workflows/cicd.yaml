@@ -110,6 +110,22 @@ jobs:
       run: |
         kubectl wait --for=condition=available --timeout=600s deployment/argocd-server -n argocd
 
+    - name: Wait for Argo CD Service to be Ready
+      run: |
+        while ! kubectl get svc argocd-server -n argocd; do
+          echo "Waiting for argocd-server service to be available..."
+          sleep 10
+        done
+
+    - name: Retrieve Argo CD Server URL
+      id: get-argocd-url
+      run: |
+        NODE_PORT=$(kubectl get svc argocd-server -n argocd -o jsonpath='{.spec.ports[0].nodePort}')
+        KIND_NODE_IP="172.18.0.2"
+        ARGOCD_SERVER_URL="https://${KIND_NODE_IP}:${NODE_PORT}"
+        echo "ARGOCD_SERVER_URL=${ARGOCD_SERVER_URL}" >> $GITHUB_ENV
+        echo "::set-output name=argocd_url::${ARGOCD_SERVER_URL}"
+
     - name: Update Helm chart values using yq
       uses: mikefarah/yq@v4.27.5
       with:
@@ -159,15 +175,6 @@ jobs:
       run: |
         curl -sSL -o /usr/local/bin/argocd https://github.com/argoproj/argo-cd/releases/download/v2.0.0/argocd-linux-amd64
         chmod +x /usr/local/bin/argocd
-
-    - name: Retrieve Argo CD Server URL
-      id: get-argocd-url
-      run: |
-        NODE_PORT=$(kubectl get svc argocd-server -n argocd -o jsonpath='{.spec.ports[0].nodePort}')
-        KIND_NODE_IP="172.18.0.2"
-        ARGOCD_SERVER_URL="https://${KIND_NODE_IP}:${NODE_PORT}"
-        echo "ARGOCD_SERVER_URL=${ARGOCD_SERVER_URL}" >> $GITHUB_ENV
-        echo "::set-output name=argocd_url::${ARGOCD_SERVER_URL}"
 
     - name: Login to Argo CD
       run: argocd login ${{ steps.get-argocd-url.outputs.argocd_url }} --username admin --password ${{ secrets.ARGOCD_PASSWORD }} --insecure
