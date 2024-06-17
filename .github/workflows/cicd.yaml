@@ -80,6 +80,10 @@ jobs:
       - name: Set DOCKER_IMAGE_NAME environment variable
         run: echo "DOCKER_IMAGE_NAME=ghcr.io/arvelog/kbot" >> $GITHUB_ENV
 
+      - name: Start KinD Cluster
+        run: |
+          kind create cluster --name kbot-cluster
+
       - name: Verify KinD Cluster
         run: |
           kubectl cluster-info
@@ -90,7 +94,7 @@ jobs:
 
       - name: Set Kubernetes Context
         run: |
-          kubectl config use-context kind-kind || kubectl config use-context kind
+          kubectl config use-context kind-kbot-cluster
 
       - name: Update Helm chart values using yq
         uses: mikefarah/yq@v4.27.5
