@@ -102,6 +102,14 @@ jobs:
           kubectl create namespace argocd
         fi
 
+    - name: Install Argo CD
+      run: |
+        kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+
+    - name: Wait for Argo CD Server to be Ready
+      run: |
+        kubectl wait --for=condition=available --timeout=600s deployment/argocd-server -n argocd
+
     - name: Update Helm chart values using yq
       uses: mikefarah/yq@v4.27.5
       with:
