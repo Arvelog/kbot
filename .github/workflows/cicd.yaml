@@ -133,7 +133,7 @@ jobs:
             exit 1
           fi
           KIND_NODE_IP=$(kubectl get nodes -o jsonpath='{.items[0].status.addresses[?(@.type=="InternalIP")].address}')
-          ARGOCD_SERVER_URL="https://${KIND_NODE_IP}:${NODE_PORT}"
+          ARGOCD_SERVER_URL="${KIND_NODE_IP}:${NODE_PORT}"
           echo "ARGOCD_SERVER_URL=${ARGOCD_SERVER_URL}" >> $GITHUB_ENV
           echo "::set-output name=argocd_url::${ARGOCD_SERVER_URL}"
 
