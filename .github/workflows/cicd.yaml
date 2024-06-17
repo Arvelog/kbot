@@ -62,133 +62,133 @@ jobs:
     needs: ci
 
     steps:
-    - name: Checkout
-      uses: actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v3
 
-    - name: Debug VERSION
-      run: echo "VERSION=${{ needs.ci.outputs.version }}"
+      - name: Debug VERSION
+        run: echo "VERSION=${{ needs.ci.outputs.version }}"
 
-    - name: Set VERSION environment variable
-      run: echo "VERSION=${{ needs.ci.outputs.version }}" >> $GITHUB_ENV
+      - name: Set VERSION environment variable
+        run: echo "VERSION=${{ needs.ci.outputs.version }}" >> $GITHUB_ENV
 
-    - name: Install kubectl
-      run: |
-        curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-        chmod +x kubectl
-        sudo mv kubectl /usr/local/bin/
+      - name: Install kubectl
+        run: |
+          curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+          chmod +x kubectl
+          sudo mv kubectl /usr/local/bin/
 
-    - name: Set DOCKER_IMAGE_NAME environment variable
-      run: echo "DOCKER_IMAGE_NAME=ghcr.io/arvelog/kbot" >> $GITHUB_ENV
+      - name: Set DOCKER_IMAGE_NAME environment variable
+        run: echo "DOCKER_IMAGE_NAME=ghcr.io/arvelog/kbot" >> $GITHUB_ENV
 
-    - name: Start KinD Cluster
-      run: |
-        kind create cluster --name kbot-cluster
+      - name: Start KinD Cluster
+        run: |
+          kind create cluster --name kbot-cluster
 
-    - name: Verify KinD Cluster
-      run: |
-        kubectl cluster-info
-        kubectl get nodes
+      - name: Verify KinD Cluster
+        run: |
+          kubectl cluster-info
+          kubectl get nodes
 
-    - name: List Kubernetes Contexts
-      run: kubectl config get-contexts
+      - name: List Kubernetes Contexts
+        run: kubectl config get-contexts
 
-    - name: Set Kubernetes Context
-      run: |
-        kubectl config use-context kind-kbot-cluster
+      - name: Set Kubernetes Context
+        run: |
+          kubectl config use-context kind-kbot-cluster
 
-    - name: Create argocd Namespace if Not Exists
-      run: |
-        if ! kubectl get namespace argocd; then
-          kubectl create namespace argocd
-        fi
-
-    - name: Install Argo CD
-      run: |
-        kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
-
-    - name: Wait for Argo CD Server to be Ready
-      run: |
-        kubectl wait --for=condition=available --timeout=600s deployment/argocd-server -n argocd
-
-    - name: Change Argo CD Server Service to NodePort
-      run: |
-        kubectl patch svc argocd-server -n argocd -p '{"spec": {"type": "NodePort"}}'
-
-    - name: Retrieve Argo CD Server URL
-      id: get-argocd-url
-      run: |
-        retries=10
-        while [ $retries -gt 0 ]; do
-          NODE_PORT=$(kubectl get svc argocd-server -n argocd -o jsonpath='{.spec.ports[?(@.port==443)].nodePort}')
-          if [ -n "$NODE_PORT" ]; then
-            break
+      - name: Create argocd Namespace if Not Exists
+        run: |
+          if ! kubectl get namespace argocd; then
+            kubectl create namespace argocd
           fi
-          echo "Failed to get NODE_PORT, retrying..."
-          retries=$((retries - 1))
-          sleep 15
-        done
-        if [ -z "$NODE_PORT" ]; then
-          echo "Failed to retrieve NODE_PORT after multiple attempts"
-          kubectl get all -n argocd
-          exit 1
-        fi
-        KIND_NODE_IP=$(kubectl get nodes -o jsonpath='{.items[0].status.addresses[?(@.type=="InternalIP")].address}')
-        ARGOCD_SERVER_URL="https://${KIND_NODE_IP}:${NODE_PORT}"
-        echo "ARGOCD_SERVER_URL=${ARGOCD_SERVER_URL}" >> $GITHUB_ENV
-        echo "::set-output name=argocd_url::${ARGOCD_SERVER_URL}"
 
-    - name: Update Helm chart values using yq
-      uses: mikefarah/yq@v4.27.5
-      with:
-        cmd: yq -i '.image.tag=strenv(VERSION)' helm/values.yaml
-      env:
-        VERSION: ${{ env.VERSION }}
+      - name: Install Argo CD
+        run: |
+          kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
 
-    - name: Commit updated values.yaml
-      env:
-        GH_PAT: ${{ secrets.GH_PAT }}
-      run: |
-        git config user.name github-actions
-        git config user.email github-actions@github.com
-        git remote set-url origin https://${{ secrets.GH_PAT }}@github.com/${{ github.repository }}
-        git stash --include-untracked
-        git pull origin main --strategy-option ours
-        git stash pop || true
-        git add helm/values.yaml
-        git commit -m "update version $VERSION" --allow-empty
-        git push origin HEAD:main
+      - name: Wait for Argo CD Server to be Ready
+        run: |
+          kubectl wait --for=condition=available --timeout=600s deployment/argocd-server -n argocd
 
-    - name: Install Helm (if needed)
-      run: |
-        curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3
-        chmod 700 get_helm.sh
-        ./get_helm.sh
+      - name: Change Argo CD Server Service to NodePort
+        run: |
+          kubectl patch svc argocd-server -n argocd -p '{"spec": {"type": "NodePort"}}'
 
-    - name: Log in to GitHub Container Registry
-      run: echo "${{ secrets.CR_PAT }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+      - name: Retrieve Argo CD Server URL
+        id: get-argocd-url
+        run: |
+          retries=10
+          while [ $retries -gt 0 ]; do
+            NODE_PORT=$(kubectl get svc argocd-server -n argocd -o jsonpath='{.spec.ports[?(@.port==443)].nodePort}')
+            if [ -n "$NODE_PORT" ]; then
+              break
+            fi
+            echo "Failed to get NODE_PORT, retrying..."
+            retries=$((retries - 1))
+            sleep 15
+          done
+          if [ -z "$NODE_PORT" ]; then
+            echo "Failed to retrieve NODE_PORT after multiple attempts"
+            kubectl get all -n argocd
+            exit 1
+          fi
+          KIND_NODE_IP=$(kubectl get nodes -o jsonpath='{.items[0].status.addresses[?(@.type=="InternalIP")].address}')
+          ARGOCD_SERVER_URL="https://${KIND_NODE_IP}:${NODE_PORT}"
+          echo "ARGOCD_SERVER_URL=${ARGOCD_SERVER_URL}" >> $GITHUB_ENV
+          echo "::set-output name=argocd_url::${ARGOCD_SERVER_URL}"
 
-    - name: Pull Docker Image from Registry
-      run: |
-        docker pull ${DOCKER_IMAGE_NAME}:${VERSION}
-      env:
-        DOCKER_IMAGE_NAME: ${{ env.DOCKER_IMAGE_NAME }}
-        VERSION: ${{ env.VERSION }}
+      - name: Update Helm chart values using yq
+        uses: mikefarah/yq@v4.27.5
+        with:
+          cmd: yq -i '.image.tag=strenv(VERSION)' helm/values.yaml
+        env:
+          VERSION: ${{ env.VERSION }}
 
-    - name: Deploy to Kubernetes with Helm
-      run: |
-        helm upgrade --install my-release helm/ --set image.tag=$VERSION
+      - name: Commit updated values.yaml
+        env:
+          GH_PAT: ${{ secrets.GH_PAT }}
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git remote set-url origin https://${{ secrets.GH_PAT }}@github.com/${{ github.repository }}
+          git stash --include-untracked
+          git pull origin main --strategy-option ours
+          git stash pop || true
+          git add helm/values.yaml
+          git commit -m "update version $VERSION" --allow-empty
+          git push origin HEAD:main
 
-    - name: Verify Helm Release
-      run: |
-        helm list
+      - name: Install Helm (if needed)
+        run: |
+          curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3
+          chmod 700 get_helm.sh
+          ./get_helm.sh
 
-    - name: Set up Argo CD CLI
-      run: |
-        curl -sSL -o /usr/local/bin/argocd https://github.com/argoproj/argo-cd/releases/download/v2.0.0/argocd-linux-amd64
-        chmod +x /usr/local/bin/argocd
+      - name: Log in to GitHub Container Registry
+        run: echo "${{ secrets.CR_PAT }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
-    - name: Login to Argo CD
-      run: argocd login ${{ steps.get-argocd-url.outputs.argocd_url }} --username admin --password ${{ secrets.ARGOCD_PASSWORD }} --insecure
+      - name: Pull Docker Image from Registry
+        run: |
+          docker pull ${DOCKER_IMAGE_NAME}:${VERSION}
+        env:
+          DOCKER_IMAGE_NAME: ${{ env.DOCKER_IMAGE_NAME }}
+          VERSION: ${{ env.VERSION }}
 
-    - name: Sync Application with Argo CD
-      run: argocd app sync my-app
+      - name: Deploy to Kubernetes with Helm
+        run: |
+          helm upgrade --install my-release helm/ --set image.tag=$VERSION
+
+      - name: Verify Helm Release
+        run: |
+          helm list
+
+      - name: Set up Argo CD CLI
+        run: |
+          curl -sSL -o /usr/local/bin/argocd https://github.com/argoproj/argo-cd/releases/download/v2.0.0/argocd-linux-amd64
+          chmod +x /usr/local/bin/argocd
+
+      - name: Login to Argo CD
+        run: argocd login ${{ steps.get-argocd-url.outputs.argocd_url }} --username admin --password ${{ secrets.ARGOCD_PASSWORD }} --insecure
+
+      - name: Sync Application with Argo CD
+        run: argocd app sync my-app
