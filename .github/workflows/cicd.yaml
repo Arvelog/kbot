@@ -120,7 +120,20 @@ jobs:
     - name: Retrieve Argo CD Server URL
       id: get-argocd-url
       run: |
-        NODE_PORT=$(kubectl get svc argocd-server -n argocd -o jsonpath='{.spec.ports[0].nodePort}')
+        retries=5
+        while [ $retries -gt 0 ]; do
+          NODE_PORT=$(kubectl get svc argocd-server -n argocd -o jsonpath='{.spec.ports[0].nodePort}')
+          if [ -n "$NODE_PORT" ]; then
+            break
+          fi
+          echo "Failed to get NODE_PORT, retrying..."
+          retries=$((retries - 1))
+          sleep 10
+        done
+        if [ -z "$NODE_PORT" ]; then
+          echo "Failed to retrieve NODE_PORT after multiple attempts"
+          exit 1
+        fi
         KIND_NODE_IP="172.18.0.2"
         ARGOCD_SERVER_URL="https://${KIND_NODE_IP}:${NODE_PORT}"
         echo "ARGOCD_SERVER_URL=${ARGOCD_SERVER_URL}" >> $GITHUB_ENV
