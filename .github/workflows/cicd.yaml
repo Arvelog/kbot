@@ -1,153 +1,105 @@
-name: KBOT-CICD
-
-on:
-  push:
-    branches:
-      - main
-
 jobs:
-  ci:
-    name: CI
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-        with:
-          fetch-depth: 0  # Ensure full history is fetched for `git describe`
-
-      - name: Set up Go
-        uses: actions/setup-go@v3
-        with:
-          go-version: 1.18
-
-      - name: Build the project
-        run: make build
-
-      - name: Log in to GitHub Container Registry
-        run: echo "${{ secrets.CR_PAT }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-
-      - name: Ensure Git Tags Exist
-        run: |
-          if ! git describe --tags --abbrev=0; then
-            git tag -a v0.0.1 -m "Initial tag"
-            git push origin --tags
-          fi
-
-      - name: Set VERSION environment variable
-        id: vars
-        run: |
-          VERSION=$(git describe --tags --always --dirty=-$(git rev-parse --short HEAD) || echo "latest")
-          echo "VERSION=${VERSION}" >> $GITHUB_ENV
-          echo "::set-output name=version::${VERSION}"
-
-      - name: Build Docker Image
-        run: |
-          docker build -t ghcr.io/arvelog/kbot:${{ steps.vars.outputs.version }} .
-        env:
-          VERSION: ${{ steps.vars.outputs.version }}
-
-      - name: Push Docker Image to Registry
-        run: |
-          docker push ghcr.io/arvelog/kbot:${{ steps.vars.outputs.version }}
-        env:
-          VERSION: ${{ steps.vars.outputs.version }}
-
-    outputs:
-      version: ${{ steps.vars.outputs.version }}
-
   cd:
     name: CD
     runs-on: ubuntu-latest
     needs: ci
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
+    - name: Checkout
+      uses: actions/checkout@v3
 
-      - name: Debug VERSION
-        run: echo "VERSION=${{ needs.ci.outputs.version }}"
+    - name: Debug VERSION
+      run: echo "VERSION=${{ needs.ci.outputs.version }}"
 
-      - name: Set VERSION environment variable
-        run: echo "VERSION=${{ needs.ci.outputs.version }}" >> $GITHUB_ENV
+    - name: Set VERSION environment variable
+      run: echo "VERSION=${{ needs.ci.outputs.version }}" >> $GITHUB_ENV
 
-      - name: Install kubectl
-        run: |
-          curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-          chmod +x kubectl
-          sudo mv kubectl /usr/local/bin/
+    - name: Install kubectl
+      run: |
+        curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+        chmod +x kubectl
+        sudo mv kubectl /usr/local/bin/
 
-      - name: Set DOCKER_IMAGE_NAME environment variable
-        run: echo "DOCKER_IMAGE_NAME=ghcr.io/arvelog/kbot" >> $GITHUB_ENV
+    - name: Set DOCKER_IMAGE_NAME environment variable
+      run: echo "DOCKER_IMAGE_NAME=ghcr.io/arvelog/kbot" >> $GITHUB_ENV
 
-      - name: Start KinD Cluster
-        run: |
-          kind create cluster --name kbot-cluster
+    - name: Start KinD Cluster
+      run: |
+        kind create cluster --name kbot-cluster
 
-      - name: Verify KinD Cluster
-        run: |
-          kubectl cluster-info
-          kubectl get nodes
+    - name: Verify KinD Cluster
+      run: |
+        kubectl cluster-info
+        kubectl get nodes
 
-      - name: List Kubernetes Contexts
-        run: kubectl config get-contexts
+    - name: List Kubernetes Contexts
+      run: kubectl config get-contexts
 
-      - name: Set Kubernetes Context
-        run: |
-          kubectl config use-context kind-kbot-cluster
+    - name: Set Kubernetes Context
+      run: |
+        kubectl config use-context kind-kbot-cluster
 
-      - name: Update Helm chart values using yq
-        uses: mikefarah/yq@v4.27.5
-        with:
-          cmd: yq -i '.image.tag=strenv(VERSION)' helm/values.yaml
-        env:
-          VERSION: ${{ env.VERSION }}
+    - name: Update Helm chart values using yq
+      uses: mikefarah/yq@v4.27.5
+      with:
+        cmd: yq -i '.image.tag=strenv(VERSION)' helm/values.yaml
+      env:
+        VERSION: ${{ env.VERSION }}
 
-      - name: Commit updated values.yaml
-        env:
-          GH_PAT: ${{ secrets.GH_PAT }}
-        run: |
-          git config user.name github-actions
-          git config user.email github-actions@github.com
-          git remote set-url origin https://${{ secrets.GH_PAT }}@github.com/${{ github.repository }}
-          git stash --include-untracked
-          git pull origin main --strategy-option ours
-          git stash pop || true
-          git add helm/values.yaml
-          git commit -m "update version $VERSION" --allow-empty
-          git push origin HEAD:main
+    - name: Commit updated values.yaml
+      env:
+        GH_PAT: ${{ secrets.GH_PAT }}
+      run: |
+        git config user.name github-actions
+        git config user.email github-actions@github.com
+        git remote set-url origin https://${{ secrets.GH_PAT }}@github.com/${{ github.repository }}
+        git stash --include-untracked
+        git pull origin main --strategy-option ours
+        git stash pop || true
+        git add helm/values.yaml
+        git commit -m "update version $VERSION" --allow-empty
+        git push origin HEAD:main
 
-      - name: Install Helm (if needed)
-        run: |
-          curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3
-          chmod 700 get_helm.sh
-          ./get_helm.sh
+    - name: Install Helm (if needed)
+      run: |
+        curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3
+        chmod 700 get_helm.sh
+        ./get_helm.sh
 
-      - name: Log in to GitHub Container Registry
-        run: echo "${{ secrets.CR_PAT }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+    - name: Log in to GitHub Container Registry
+      run: echo "${{ secrets.CR_PAT }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
-      - name: Pull Docker Image from Registry
-        run: |
-          docker pull ${DOCKER_IMAGE_NAME}:${VERSION}
-        env:
-          DOCKER_IMAGE_NAME: ${{ env.DOCKER_IMAGE_NAME }}
-          VERSION: ${{ env.VERSION }}
+    - name: Pull Docker Image from Registry
+      run: |
+        docker pull ${DOCKER_IMAGE_NAME}:${VERSION}
+      env:
+        DOCKER_IMAGE_NAME: ${{ env.DOCKER_IMAGE_NAME }}
+        VERSION: ${{ env.VERSION }}
 
-      - name: Deploy to Kubernetes with Helm
-        run: |
-          helm upgrade --install my-release helm/ --set image.tag=$VERSION
+    - name: Deploy to Kubernetes with Helm
+      run: |
+        helm upgrade --install my-release helm/ --set image.tag=$VERSION
 
-      - name: Verify Helm Release
-        run: |
-          helm list
+    - name: Verify Helm Release
+      run: |
+        helm list
 
-      - name: Set up Argo CD CLI
-        run: |
-          curl -sSL -o /usr/local/bin/argocd https://github.com/argoproj/argo-cd/releases/download/v2.0.0/argocd-linux-amd64
-          chmod +x /usr/local/bin/argocd
+    - name: Set up Argo CD CLI
+      run: |
+        curl -sSL -o /usr/local/bin/argocd https://github.com/argoproj/argo-cd/releases/download/v2.0.0/argocd-linux-amd64
+        chmod +x /usr/local/bin/argocd
 
-      - name: Login to Argo CD
-        run: argocd login argocd.example.com --username admin --password ${{ secrets.ARGOCD_PASSWORD }}
+    - name: Retrieve Argo CD Server URL
+      id: get-argocd-url
+      run: |
+        NODE_PORT=$(kubectl get svc argocd-server -n argocd -o jsonpath='{.spec.ports[0].nodePort}')
+        KIND_NODE_IP=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' $(docker ps -q --filter "name=kind"))
+        ARGOCD_SERVER_URL="https://${KIND_NODE_IP}:${NODE_PORT}"
+        echo "ARGOCD_SERVER_URL=${ARGOCD_SERVER_URL}" >> $GITHUB_ENV
+        echo "::set-output name=argocd_url::${ARGOCD_SERVER_URL}"
 
-      - name: Sync Application with Argo CD
-        run: argocd app sync my-app
+    - name: Login to Argo CD
+      run: argocd login ${{ steps.get-argocd-url.outputs.argocd_url }} --username admin --password ${{ secrets.ARGOCD_PASSWORD }} --insecure
+
+    - name: Sync Application with Argo CD
+      run: argocd app sync my-app
