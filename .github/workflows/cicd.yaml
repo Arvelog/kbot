@@ -207,6 +207,10 @@ jobs:
               "admin.passwordMtime": "'$(date +%FT%T%Z)'"
             }}'
 
+      - name: Verify Argo CD Admin Password
+        run: |
+          kubectl get secret argocd-secret -n argocd -o jsonpath='{.data.admin\.password}' | base64 --decode
+
       - name: Login to Argo CD
         run: argocd login ${{ steps.get-argocd-url.outputs.argocd_url }} --username admin --password password --insecure
 
