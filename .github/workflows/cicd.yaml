@@ -194,6 +194,11 @@ jobs:
           curl -sSL -o /usr/local/bin/argocd https://github.com/argoproj/argo-cd/releases/download/v2.0.0/argocd-linux-amd64
           chmod +x /usr/local/bin/argocd
 
+      - name: Update Argo CD CLI to Latest Version
+        run: |
+          curl -sSL -o /usr/local/bin/argocd https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
+          chmod +x /usr/local/bin/argocd
+
       - name: Reset Argo CD Admin Password
         run: |
           argocd admin password reset --password newpassword
