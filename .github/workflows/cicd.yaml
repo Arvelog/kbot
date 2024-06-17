@@ -80,19 +80,17 @@ jobs:
       - name: Set DOCKER_IMAGE_NAME environment variable
         run: echo "DOCKER_IMAGE_NAME=ghcr.io/arvelog/kbot" >> $GITHUB_ENV
 
-      - name: Set up KinD
-        uses: helm/kind-action@v1.2.0
-        with:
-          version: v0.11.1
-
       - name: Verify KinD Cluster
         run: |
           kubectl cluster-info
           kubectl get nodes
 
+      - name: List Kubernetes Contexts
+        run: kubectl config get-contexts
+
       - name: Set Kubernetes Context
         run: |
-          kubectl config use-context kind-kind
+          kubectl config use-context kind-kind || kubectl config use-context kind
 
       - name: Update Helm chart values using yq
         uses: mikefarah/yq@v4.27.5
