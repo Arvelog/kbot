@@ -14,7 +14,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
         with:
-          fetch-depth: 0
+          fetch-depth: 0  # Ensure full history is fetched for `git describe`
 
       - name: Set up Go
         uses: actions/setup-go@v3
@@ -42,10 +42,16 @@ jobs:
           echo "::set-output name=version::${VERSION}"
 
       - name: Build Docker Image
-        run: docker build -t ghcr.io/arvelog/kbot:${{ steps.vars.outputs.version }} .
+        run: |
+          docker build -t ghcr.io/arvelog/kbot:${{ steps.vars.outputs.version }} .
+        env:
+          VERSION: ${{ steps.vars.outputs.version }}
 
       - name: Push Docker Image to Registry
-        run: docker push ghcr.io/arvelog/kbot:${{ steps.vars.outputs.version }}
+        run: |
+          docker push ghcr.io/arvelog/kbot:${{ steps.vars.outputs.version }}
+        env:
+          VERSION: ${{ steps.vars.outputs.version }}
 
     outputs:
       version: ${{ steps.vars.outputs.version }}
@@ -75,7 +81,8 @@ jobs:
         run: echo "DOCKER_IMAGE_NAME=ghcr.io/arvelog/kbot" >> $GITHUB_ENV
 
       - name: Start KinD Cluster
-        run: kind create cluster --name kbot-cluster
+        run: |
+          kind create cluster --name kbot-cluster
 
       - name: Verify KinD Cluster
         run: |
@@ -86,7 +93,8 @@ jobs:
         run: kubectl config get-contexts
 
       - name: Set Kubernetes Context
-        run: kubectl config use-context kind-kbot-cluster
+        run: |
+          kubectl config use-context kind-kbot-cluster
 
       - name: Create argocd Namespace if Not Exists
         run: |
@@ -99,10 +107,12 @@ jobs:
           kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
 
       - name: Wait for Argo CD Server to be Ready
-        run: kubectl wait --for=condition=available --timeout=600s deployment/argocd-server -n argocd
+        run: |
+          kubectl wait --for=condition=available --timeout=600s deployment/argocd-server -n argocd
 
       - name: Change Argo CD Server Service to NodePort
-        run: kubectl patch svc argocd-server -n argocd -p '{"spec": {"type": "NodePort"}}'
+        run: |
+          kubectl patch svc argocd-server -n argocd -p '{"spec": {"type": "NodePort"}}'
 
       - name: Retrieve Argo CD Server URL
         id: get-argocd-url
@@ -130,7 +140,7 @@ jobs:
       - name: Retrieve Argo CD Admin Password
         id: get-argocd-password
         run: |
-          ARGOCD_PASSWORD=$(kubectl get secret argocd-initial-admin-secret -n argocd -o jsonpath='{.data.password}' | base64 --decode)
+          ARGOCD_PASSWORD=$(kubectl get pods -n argocd -l app.kubernetes.io/name=argocd-server -o jsonpath='{.items[0].metadata.name}')
           echo "ARGOCD_PASSWORD=${ARGOCD_PASSWORD}" >> $GITHUB_ENV
           echo "::set-output name=argocd_password::${ARGOCD_PASSWORD}"
 
@@ -165,16 +175,19 @@ jobs:
         run: echo "${{ secrets.CR_PAT }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
       - name: Pull Docker Image from Registry
-        run: docker pull ${DOCKER_IMAGE_NAME}:${VERSION}
+        run: |
+          docker pull ${DOCKER_IMAGE_NAME}:${VERSION}
         env:
           DOCKER_IMAGE_NAME: ${{ env.DOCKER_IMAGE_NAME }}
           VERSION: ${{ env.VERSION }}
 
       - name: Deploy to Kubernetes with Helm
-        run: helm upgrade --install my-release helm/ --set image.tag=$VERSION
+        run: |
+          helm upgrade --install my-release helm/ --set image.tag=$VERSION
 
       - name: Verify Helm Release
-        run: helm list
+        run: |
+          helm list
 
       - name: Set up Argo CD CLI
         run: |
@@ -186,25 +199,16 @@ jobs:
           curl -sSL -o /usr/local/bin/argocd https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
           chmod +x /usr/local/bin/argocd
 
-      - name: Delete Existing Argo CD Secret
-        run: kubectl delete secret argocd-secret -n argocd || true
-
-      - name: Create New Argo CD Secret with New Password
+      - name: Login to Argo CD with Default Admin Password
+        id: login-default
         run: |
-          kubectl create secret generic argocd-secret -n argocd \
-            --from-literal=admin.password='$(htpasswd -bnBC 10 "" password | tr -d ':\n')' \
-            --from-literal=admin.passwordMtime="$(date +%FT%T%Z)"
+          argocd login ${{ steps.get-argocd-url.outputs.argocd_url }} --username admin --password ${{ steps.get-argocd-password.outputs.argocd_password }} --insecure
 
-      - name: Restart Argo CD Server
-        run: kubectl rollout restart deployment argocd-server -n argocd
+      - name: Change Argo CD Admin Password
+        run: |
+          argocd account update-password --account admin --current-password ${{ steps.get-argocd-password.outputs.argocd_password }} --new-password password --server ${{ steps.get-argocd-url.outputs.argocd_url }} --insecure
 
-      - name: Wait for Argo CD Server to be Ready
-        run: kubectl wait --for=condition=available --timeout=600s deployment/argocd-server -n argocd
-
-      - name: Verify Argo CD Admin Password
-        run: kubectl get secret argocd-secret -n argocd -o jsonpath='{.data.admin\.password}' | base64 --decode
-
-      - name: Login to Argo CD
+      - name: Login to Argo CD with New Admin Password
         run: argocd login ${{ steps.get-argocd-url.outputs.argocd_url }} --username admin --password password --insecure
 
       - name: Sync Application with Argo CD
