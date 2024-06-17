@@ -199,14 +199,34 @@ jobs:
           curl -sSL -o /usr/local/bin/argocd https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
           chmod +x /usr/local/bin/argocd
 
-      - name: Login to Argo CD with Default Admin Password
-        id: login-default
+      - name: Create Kubernetes Job to Reset Argo CD Admin Password
         run: |
-          argocd login ${{ steps.get-argocd-url.outputs.argocd_url }} --username admin --password ${{ steps.get-argocd-password.outputs.argocd_password }} --insecure
+          cat <<EOF | kubectl apply -f -
+          apiVersion: batch/v1
+          kind: Job
+          metadata:
+            name: reset-argocd-admin-password
+            namespace: argocd
+          spec:
+            template:
+              spec:
+                containers:
+                - name: reset-password
+                  image: argoproj/argocd:v2.0.0
+                  command: ["/bin/sh", "-c"]
+                  args:
+                    - |
+                      argocd login $ARGOCD_SERVER_URL --username admin --password $ARGOCD_PASSWORD --insecure
+                      argocd account update-password --account admin --current-password $ARGOCD_PASSWORD --new-password password --server $ARGOCD_SERVER_URL --insecure
+                restartPolicy: Never
+          EOF
+        env:
+          ARGOCD_SERVER_URL: ${{ steps.get-argocd-url.outputs.argocd_url }}
+          ARGOCD_PASSWORD: ${{ steps.get-argocd-password.outputs.argocd_password }}
 
-      - name: Change Argo CD Admin Password
+      - name: Wait for Job to Complete
         run: |
-          argocd account update-password --account admin --current-password ${{ steps.get-argocd-password.outputs.argocd_password }} --new-password password --server ${{ steps.get-argocd-url.outputs.argocd_url }} --insecure
+          kubectl wait --for=condition=complete --timeout=600s job/reset-argocd-admin-password -n argocd
 
       - name: Login to Argo CD with New Admin Password
         run: argocd login ${{ steps.get-argocd-url.outputs.argocd_url }} --username admin --password password --insecure
