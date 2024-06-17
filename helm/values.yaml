@@ -4,7 +4,7 @@ image:
   registry: "ghcr.io"
   repository: "arvelog/kbot"
   pullPolicy: IfNotPresent
-  tag: "v0.0.1-9-ga5c6534" # Set a default value, will be updated dynamically in the workflow
+  tag: "v0.0.1-12-g9c0a678" # Set a default value, will be updated dynamically in the workflow
   os: linux
   arch: amd64
   parameter: go
