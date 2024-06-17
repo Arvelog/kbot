@@ -96,6 +96,12 @@ jobs:
       run: |
         kubectl config use-context kind-kbot-cluster
 
+    - name: Create argocd Namespace if Not Exists
+      run: |
+        if ! kubectl get namespace argocd; then
+          kubectl create namespace argocd
+        fi
+
     - name: Update Helm chart values using yq
       uses: mikefarah/yq@v4.27.5
       with:
