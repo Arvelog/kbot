@@ -199,17 +199,23 @@ jobs:
           curl -sSL -o /usr/local/bin/argocd https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
           chmod +x /usr/local/bin/argocd
 
-      - name: Reset Argo CD Admin Password Using Kubernetes Secret
+      - name: Delete Existing Argo CD Secret
         run: |
-          kubectl -n argocd patch secret argocd-secret \
-            -p '{"stringData": {
-              "admin.password": "$2a$10$7EqJtq98hPqEX7fNZaFWoOa1Z2Zr5iG8aVZ/5J8b5pJ5fK9pG1FZm",
-              "admin.passwordMtime": "'$(date +%FT%T%Z)'"
-            }}'
+          kubectl delete secret argocd-secret -n argocd || true
 
-      - name: Verify Argo CD Admin Password
+      - name: Create New Argo CD Secret with New Password
         run: |
-          kubectl get secret argocd-secret -n argocd -o jsonpath='{.data.admin\.password}' | base64 --decode
+          kubectl create secret generic argocd-secret -n argocd \
+            --from-literal=admin.password='$2a$10$7EqJtq98hPqEX7fNZaFWoOa1Z2Zr5iG8aVZ/5J8b5pJ5fK9pG1FZm' \
+            --from-literal=admin.passwordMtime="$(date +%FT%T%Z)"
+
+      - name: Restart Argo CD Server
+        run: |
+          kubectl rollout restart deployment argocd-server -n argocd
+
+      - name: Wait for Argo CD Server to be Ready
+        run: |
+          kubectl wait --for=condition=available --timeout=600s deployment/argocd-server -n argocd
 
       - name: Login to Argo CD
         run: argocd login ${{ steps.get-argocd-url.outputs.argocd_url }} --username admin --password password --insecure
