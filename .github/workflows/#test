@@ -140,14 +140,3 @@ jobs:
       - name: Verify Helm Release
         run: |
           helm list
-
-      - name: Set up Argo CD CLI
-        run: |
-          curl -sSL -o /usr/local/bin/argocd https://github.com/argoproj/argo-cd/releases/download/v2.0.0/argocd-linux-amd64
-          chmod +x /usr/local/bin/argocd
-
-      - name: Login to Argo CD
-        run: argocd login argocd.example.com --username admin --password ${{ secrets.ARGOCD_PASSWORD }}
-
-      - name: Sync Application with Argo CD
-        run: argocd app sync my-app
