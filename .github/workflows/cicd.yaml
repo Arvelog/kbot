@@ -90,9 +90,25 @@ jobs:
           DOCKER_IMAGE_NAME: ${{ env.DOCKER_IMAGE_NAME }}
           VERSION: ${{ env.VERSION }}
 
+      - name: Install Helm (if needed)
+        run: |
+          curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3
+          chmod 700 get_helm.sh
+          ./get_helm.sh
+
+      - name: Set Kubernetes Context
+        run: |
+          kubectl config use-context kind-kbot-cluster
+
+      - name: Verify Kubernetes Cluster
+        run: |
+          kubectl cluster-info
+
       - name: Deploy to Kubernetes with Helm
         run: |
           helm upgrade --install my-release helm/ --set image.tag=$VERSION
+        env:
+          VERSION: ${{ env.VERSION }}
 
       - name: Verify Helm Release
         run: |
