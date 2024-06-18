@@ -80,6 +80,9 @@ jobs:
       - name: Set DOCKER_IMAGE_NAME environment variable
         run: echo "DOCKER_IMAGE_NAME=ghcr.io/arvelog/kbot" >> $GITHUB_ENV
 
+      - name: Log in to GitHub Container Registry
+        run: echo "${{ secrets.CR_PAT }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
       - name: Pull Docker Image from Registry
         run: |
           docker pull ${DOCKER_IMAGE_NAME}:${VERSION}
